@@ -1,10 +1,11 @@
 import express from 'express';
-import userRoutes from './src/routes/userRoutes';
+import routes from './src/routes/routes';
+
 const app = express();
 
 app.use(express.json());
 
-app.use("/api/v1", userRoutes);
+app.use("/api/v1", routes);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ ok: true, message: 'Backend is running' });

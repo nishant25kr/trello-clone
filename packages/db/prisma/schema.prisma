@@ -14,7 +14,7 @@ model User {
   memberships Membership[]
 }
 
-model Organisation {
+model Organization {
   id          String       @id @unique @default(uuid())
   name        String
   description String
@@ -27,7 +27,7 @@ model Membership {
   userId         String
   organisationId String
   role           RoleEnum
-  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  organisation   Organization @relation(fields: [organisationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
 }
 
@@ -35,7 +35,7 @@ model Board {
   id             String       @id @unique @default(uuid())
   title          String
   organisationId String
-  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  organisation   Organization @relation(fields: [organisationId], references: [id])
   issues         Issue[]
   sections       Section[]
 }
