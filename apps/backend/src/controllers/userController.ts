@@ -1,7 +1,6 @@
 import type { Request, Response } from 'express';
 import { prisma } from "@repo/db";
 
-
 const getUser = async (req: Request, res: Response) => {
     const userId = req.params.id;
     
@@ -20,6 +19,7 @@ const getUser = async (req: Request, res: Response) => {
 };
 
 const createUser = async (req: Request, res: Response) => {
+    console.log("Received request to create user:", req.body);
     const { username, password } = req.body;
     console.log("Received request to create user:", { username, password });
     if (!username || !password) {
@@ -29,6 +29,7 @@ const createUser = async (req: Request, res: Response) => {
         const user = await prisma.user.create({
             data: { username: username, password: password }
         });
+
         console.log("User created successfully:", user);
         if(!user) {
             return res.status(500).json({ error: "Error creating user" });
@@ -37,7 +38,7 @@ const createUser = async (req: Request, res: Response) => {
 
     } catch (error: any) {
         console.error("Error creating user:", error);
-        return res.status(500).json({ error: error.message || "Error creating user" });
+        return res.status(500).json({ errorj: error });
     }
 
 };
