@@ -1,14 +1,22 @@
 import router from "express";
 import userController from "../controllers/userController";
 import { createOrg, getOrg } from "../controllers/orgController";
+import { createIssue, getIssue } from "../controllers/issueController";
+import { createSection, getSection } from "../controllers/sectionController";
+import { createBoard } from "../controllers/boardController";
 
 const { getUser, createUser } = userController;
 
-const routes = router.Router();
+const route = router.Router();
 
-routes.get("/users/:id", getUser);
-routes.post("/users", createUser);
-routes.post("/organization", createOrg);
-routes.get("/organization/id", getOrg);
+route.post("/users", createUser);
+route.post("/organization", createOrg);
+route.post("/issue",createIssue)
+route.post("/section", createSection)
+route.post("/board",createBoard)
+route.get("/section", getSection)
+route.get("/users/:id", getUser);
+route.get("/organization/id", getOrg);
+route.get("/issue/:id",getIssue)
 
-export default routes;
+export default route;

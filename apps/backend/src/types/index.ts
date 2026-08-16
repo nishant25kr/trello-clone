@@ -3,7 +3,7 @@ import z from 'zod'
 const createOrgSchema = z.object({
     userId: z.string(),
     name: z.string(),
-    descriptin: z.string()
+    description: z.string()
 })
 
 const createMembership = z.object({
@@ -24,9 +24,18 @@ const createIssueSchema = z.object({
     sectionId: z.string()
 })
 
+const createSectionSchema = z.object({
+    boardId: z.string(),
+    title: z.string(),
+});
+
+const getIssueSchema = z.string()
+
 export { 
     createMembership, 
     createOrgSchema, 
     createBoardSchema,
-    createIssueSchema
+    createIssueSchema,
+    createSectionSchema,
+    getIssueSchema
 }

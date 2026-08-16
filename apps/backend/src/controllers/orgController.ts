@@ -4,7 +4,7 @@ import { createOrgSchema } from '../types';
 
 const getOrg = async (req: Request, res: Response) => {
     const orgId = req.params.id;
-
+    console.log(orgId)
     if(!orgId || Array.isArray(orgId)) {
         return res.status(400).json({ error: "Organization ID is required" });
     }
@@ -42,7 +42,7 @@ const createOrg = async (req: Request, res: Response) => {
         const org = await prisma.organization.create({
             data:{
                 name : parsedData.data.name,
-                description: parsedData.data.descriptin
+                description: parsedData.data.description
             }
         })
 
@@ -56,7 +56,7 @@ const createOrg = async (req: Request, res: Response) => {
 
         if(!org || !membership) return res.status(400).json({ message: "failed to create organization" });
 
-        return res.status(200).json({message: "organization created successfully"});
+        return res.status(200).json({message: "organization created successfully",data:org});
     } catch (error) {
         return res.status(400).json({ message: "Internal server error" });
     }

@@ -1,11 +1,15 @@
 import type { Request, Response } from "express";
 import { prisma } from "@repo/db"
-import { createIssueSchema } from "../types"
+import { createIssueSchema, getIssueSchema } from "../types"
 
 const createIssue = async (req:Request, res: Response) => {
     const parsedData = createIssueSchema.safeParse(req.body);
-    if(!parsedData.success) return res.status(400).json({message: 'validation failed'})
+    console.log(parsedData)
 
+    if(!parsedData.success){
+        return res.status(404).json({message: "Validation failed"})
+    }
+    
     try {
         const issue = await prisma.issue.create({
             data:{
@@ -20,8 +24,29 @@ const createIssue = async (req:Request, res: Response) => {
     } catch (error: any) {
         return res.status(400).json({message: error.message});
     }
-
-
 }
 
-export { createIssue };
+const getIssue = async(req:Request, res:Response) => {
+    
+    const parsedData = getIssueSchema.safeParse(req.params.id)
+    if(!parsedData.success) return res.status(400).json({message : "validation failed"})
+
+    try {
+        const issue = await prisma.issue.findUnique({
+            where:{
+                id : parsedData.data
+            }
+        })
+
+        if(!issue) return res.status(400).json({ message: "Failed to fetch issue" })
+
+        return res.status(200).json({issue: issue})
+    } catch (error) {
+        return res.status(500).json({message:"Internal server error"})
+    }
+}
+
+export { 
+    createIssue, 
+    getIssue 
+};

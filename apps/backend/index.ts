@@ -1,11 +1,11 @@
 import express from 'express';
-import routes from './src/routes/routes';
+import route from './src/routes/routes';
 
 const app = express();
 
 app.use(express.json());
 
-app.use("/api/v1", routes);
+app.use("/api/v1", route);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ ok: true, message: 'Backend is running' });
