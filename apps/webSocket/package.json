@@ -1,0 +1,21 @@
+{
+  "name": "websocket",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch index.ts",
+    "build": "bun build index.ts --outdir dist",
+    "check-types": "bun x tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@types/ws": "^8.18.1",
+    "ws": "^8.21.3"
+  }
+}
