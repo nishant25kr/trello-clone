@@ -3,3 +3,18 @@ export interface Issue {
     title: string, 
     section: string
 }
+
+export interface User{
+    id: string,
+    username: string,
+    ws:WebSocket
+}
+
+export interface PayloadSchema{
+    
+}
+
+export interface OutgoingMessage{
+    type: string,
+    payload: PayloadSchema
+}

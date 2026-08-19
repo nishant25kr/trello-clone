@@ -31,11 +31,17 @@ const createSectionSchema = z.object({
 
 const getIssueSchema = z.string()
 
+const updateIssueSchema = z.object({
+    id: z.string(),
+    sectionId: z.string()
+})
+
 export { 
     createMembership, 
     createOrgSchema, 
     createBoardSchema,
     createIssueSchema,
     createSectionSchema,
-    getIssueSchema
+    getIssueSchema,
+    updateIssueSchema
 }

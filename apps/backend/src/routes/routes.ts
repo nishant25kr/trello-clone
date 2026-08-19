@@ -1,7 +1,7 @@
 import router from "express";
 import userController from "../controllers/userController";
 import { createOrg, getOrg } from "../controllers/orgController";
-import { createIssue, getIssue } from "../controllers/issueController";
+import { createIssue, getIssue, updateIssue } from "../controllers/issueController";
 import { createSection, getSection } from "../controllers/sectionController";
 import { createBoard } from "../controllers/boardController";
 
@@ -18,5 +18,7 @@ route.get("/section", getSection)
 route.get("/users/:id", getUser);
 route.get("/organization/id", getOrg);
 route.get("/issue/:id",getIssue)
+route.put("/issue",updateIssue)
+
 
 export default route;

@@ -25,5 +25,4 @@ export class IssueManager{
         console.log("")
     }
 
-
 }

@@ -1,16 +1,11 @@
 import { WebSocketServer } from 'ws';
 import { IssueManager } from './src/Managers/IssueManager';
+import { User } from './src/Managers/User';
 
 const wss = new WebSocketServer({ port: 8080 });
 
-wss.on('connection', function connection(ws) {
+wss.on('connection', function connection(ws: WebSocket) {
+  
+  const manager = new User(ws)
 
-  const manager = new IssueManager()
-  ws.on('error', console.error);
-
-  ws.on('message', function message(data) {
-    console.log('received: %s', data);
-  });
-
-  ws.send('Hello from server');
 }); 
