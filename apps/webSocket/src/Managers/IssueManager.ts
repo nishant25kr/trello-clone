@@ -1,28 +1,39 @@
 import type { Issue } from "../types";
 
-export class IssueManager{
+export class IssueManager {
     private issues: Issue[];
-    
-    constructor(){
+    static instance: IssueManager;
+
+    constructor() {
         this.issues = [];
     }
 
-    public addTask(id: number ,title: string, section: string){
-        const task = {
-            id,
-            title,
-            section
+    public static getInstance() {
+        if (!IssueManager.instance) {
+            IssueManager.instance = new IssueManager()
         }
-        this.issues.push(task)
+        return IssueManager.instance
     }
 
-    public deleteTask(id: number): void{
-        const filteredIssue = this.issues.filter(item => item.id !== id)
-        console.log("filtered Issue", filteredIssue)
+    public addTask(issue: Issue) {
+        this.issues.push(issue)
     }
 
-    public changeSection(id: number){
-        console.log("")
+    public deleteTask(issueId: string) {
+        // this.issues.fi
+
+    }
+
+    public changeSection(issueId: string, updatedSection: string) {
+        if (!this.issues.find(i => i.id === issueId)) return;
+
+        const updatedIssue = this.issues.map((i: Issue) =>
+            i.id === issueId
+                ? { ...i, sectionId: updatedSection }
+                : i
+        ); 
+
+        this.issues = updatedIssue;
     }
 
 }

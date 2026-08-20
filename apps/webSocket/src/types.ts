@@ -1,7 +1,9 @@
-export interface Issue {
-    id:number,
-    title: string, 
-    section: string
+export interface Issue { 
+    id: string;
+    title: string; 
+    description: string; 
+    boardId: string; 
+    sectionId: string; 
 }
 
 export interface User{

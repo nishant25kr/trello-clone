@@ -1,4 +1,6 @@
-import type { User, OutgoingMessage } from "../types";
+import type { OutgoingMessage } from "../types";
+import type { User } from "./User.js";
+
 
 export class UserManager {
     private users: User[];
@@ -17,24 +19,32 @@ export class UserManager {
         return this.instance
     }
 
-    public getUsers(){
+    public getUsers() {
         return this.users
     }
 
     public addUser(user: User) {
         this.users.push(user)
+        const message = {
+            type: "user-joined",
+            payload: {
+                id: user.id,
+                username: user.username
+            }
+        }
+        this.broadcast(user, message)
     }
 
-    public RemoveUser(id: string): void {
-        const filteredUser = this.users.filter(item => item.id !== id)
-        console.log("filtered User", filteredUser)
+    public RemoveUser(user: User){
+        const filteredUser = this.users.filter(item => item.id !== user.id)
+        
     }
 
-    public broadcast(id: string, message: any) {
-        if (!this.users.find(u => u.id === id)) return;
+    public broadcast(sender: User, message: any) {
+        if (!this.users.find(u => u.id === sender.id)) return;
 
         this.users.forEach(i => {
-            if (i.id !== id) {
+            if (i.id !== sender.id) {
                 i.ws.send(message)
             }
         }
@@ -42,8 +52,8 @@ export class UserManager {
 
     }
 
-    public handleIssueChange(id: string ){
-        
+    public handleIssueChange(id: string) {
+
     }
 
 }
