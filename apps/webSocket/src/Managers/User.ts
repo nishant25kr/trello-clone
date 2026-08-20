@@ -7,13 +7,13 @@ import { UserManager } from "./UserManager";
 const JWTSECRET = process.env.JWTSECRET
 
 export class User {
-    public id: number;
+    public id: string;
     public username: string;
     public ws: WebSocket;
 
     constructor(ws: WebSocket) {
-        this.id = getRandmomId();
         this.ws = ws;
+        this.username =''
         this.initHandler()   
     }
 
@@ -23,6 +23,7 @@ export class User {
             switch (parsedData.type) {
                 case 'join':
                     const token = parsedData.payload.token;
+                    const boardId = parsedData.payload.boardId 
                     let user;
                     try {
                         user = jwt.verify(token, JWTSECRET!);
@@ -32,15 +33,28 @@ export class User {
                         return;
                     }
                     this.id = (user as jwt.JwtPayload).userId;
-                    // const userDetail = await prisma.
-
+                    const userDetail = await prisma.user.findUnique({
+                        where:{
+                            id : this.id
+                        }
+                    })
+                    const issues = prisma.issue.findMany({
+                        where:{
+                            boardId:boardId
+                        }
+                    })
+                    if(!userDetail || !issues) return;
+                    this.username = userDetail.username;
+                    this.id = userDetail.id;
                     this.ws.send(JSON.stringify({
-                        type:"init_message",
+                        type:"init-state",
                         payload:{
-                            id:this.id,
-                            users: UserManager.getInstance().getUsers       
+                            id: this.id,
+                            users: UserManager.getInstance().getUsers(),
+                            issues: issues
                         }
                     }))
+
                     break;
 
                 default:
@@ -49,5 +63,12 @@ export class User {
         });
     }
 
+    destroy() {
+        // this.ws.removeAllListeners('message');
+
+        // if (this.ws.readyState === this.ws.OPEN) {
+        //     this.ws.close();
+        // }
+    }
 
 }
