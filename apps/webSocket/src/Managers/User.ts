@@ -59,7 +59,7 @@ export class User {
                         payload: {
                             id: this.id,
                             users: UserManager.getInstance().getUsers(),
-                            issues: issues
+                            issues
                         }
                     }))
                     break;
@@ -79,7 +79,7 @@ export class User {
 
                 case 'update-section':
                     const issueId = parsedData.payload.issueId;
-                    const updatedSection = parsedData.paylaod.updatedSection;
+                    const updatedSection = parsedData.payload.updatedSection;
                     IssueManager.getInstance().changeSection(issueId, updatedSection)
                     UserManager.getInstance().broadcast(
                         this,

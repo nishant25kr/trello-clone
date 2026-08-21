@@ -1,5 +1,7 @@
 import type { Request, Response } from 'express';
 import { prisma } from "@repo/db";
+import { signInSchema } from '../types';
+import jwt from "jsonwebtoken"
 
 const getUser = async (req: Request, res: Response) => {
     const userId = req.params.id;
@@ -19,7 +21,6 @@ const getUser = async (req: Request, res: Response) => {
 };
 
 const createUser = async (req: Request, res: Response) => {
-    console.log("Received request to create user:", req.body);
     const { username, password } = req.body;
     console.log("Received request to create user:", { username, password });
     if (!username || !password) {
@@ -42,5 +43,30 @@ const createUser = async (req: Request, res: Response) => {
     }
 
 };
+
+const signIn = async (req:Request, res:Response) => {
+    const parsedData = signInSchema.safeParse(req.body);
+    if(!parsedData.success){
+        return res.status(400).json({ message:"Validation failed "});
+    }
+    try {
+        const user = await prisma.user.findUnique({
+            where:{
+                username: parsedData.data.username
+            }
+        })
+        if(!user) return res.status(400).json({ message:"invalid username" })
+        if(user.password === parsedData.data.password){
+            return res.status(400).json({message:"Wrong password"})
+        }
+        const token = jwt.sign({
+            userId : user.id,
+            username: user.username,
+            role : user.role
+        },JWT_PASSWORD)
+    } catch (error) {
+        
+    }
+}
 
 export default { getUser, createUser };

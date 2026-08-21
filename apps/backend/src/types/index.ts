@@ -36,6 +36,11 @@ const updateIssueSchema = z.object({
     sectionId: z.string()
 })
 
+const signInSchema = z.object({
+    username: z.string(),
+    password: z.string()
+})
+
 export { 
     createMembership, 
     createOrgSchema, 
@@ -43,5 +48,6 @@ export {
     createIssueSchema,
     createSectionSchema,
     getIssueSchema,
-    updateIssueSchema
+    updateIssueSchema,
+    signInSchema
 }
