@@ -1,7 +1,6 @@
 import type { OutgoingMessage } from "../types";
 import type { User } from "./User.js";
 
-
 export class UserManager {
     private users: User[];
     static instance: UserManager
@@ -20,18 +19,22 @@ export class UserManager {
     }
 
     public getUsers() {
-        return this.users
+        const res: any[] = [];
+        this.users.forEach( (u) => {
+            res.push({id:u.id, username:u.username});
+        })
+        return res
     }
 
     public addUser(user: User) {
         this.users.push(user)
-        const message = {
+        const message = JSON.stringify({
             type: "user-joined",
             payload: {
                 id: user.id,
                 username: user.username
             }
-        }
+        })
         this.broadcast(user, message)
     }
 
@@ -49,7 +52,6 @@ export class UserManager {
             }
         }
         )
-
     }
 
     public handleIssueChange(id: string) {

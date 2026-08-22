@@ -42,7 +42,7 @@ export class User {
                             id: this.id
                         }
                     })
-                    const issues = prisma.issue.findMany({
+                    const issues = await prisma.issue.findMany({
                         where: {
                             boardId: boardId
                         }
@@ -51,7 +51,7 @@ export class User {
                     this.username = userDetail.username;
                     this.id = userDetail.id;
                     UserManager.getInstance().addUser(this);
-                    (await issues).forEach((item) =>
+                    issues.forEach((item) =>
                         IssueManager.getInstance().addTask(item)
                     )
                     this.ws.send(JSON.stringify({
