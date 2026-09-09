@@ -27,6 +27,7 @@ export class UserManager {
     }
 
     public addUser(user: User) {
+        if(this.users.find(u => u.id === user.id)) return;
         this.users.push(user)
         const message = JSON.stringify({
             type: "user-joined",

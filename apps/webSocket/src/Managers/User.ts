@@ -23,6 +23,7 @@ export class User {
                 case 'join':
                     const token = parsedData.payload.token;
                     const boardId = parsedData.payload.boardId
+                    console.log("message",parsedData.payload)
                     if(!token || !boardId){
                         this.ws.send("error while fetching user detail from token")
                         return;
@@ -47,6 +48,11 @@ export class User {
                             boardId: boardId
                         }
                     })
+                    const sections = await prisma.section.findMany({
+                        where: {
+                            boardId: boardId
+                        }
+                    })
                     if (!userDetail || !issues) return;
                     this.username = userDetail.username;
                     this.id = userDetail.id;
@@ -58,6 +64,7 @@ export class User {
                         type: "init-state",
                         payload: {
                             id: this.id,
+                            sections,
                             users: UserManager.getInstance().getUsers(),
                             issues
                         }
