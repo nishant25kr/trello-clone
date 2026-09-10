@@ -23,6 +23,7 @@ export class User {
                 case 'join':
                     const token = parsedData.payload.token;
                     const boardId = parsedData.payload.boardId
+                    const organizationId = parsedData.payload.organizationId
                     console.log("message",parsedData.payload)
                     if(!token || !boardId){
                         this.ws.send("error while fetching user detail from token")
@@ -43,30 +44,39 @@ export class User {
                             id: this.id
                         }
                     })
-                    const issues = await prisma.issue.findMany({
+                    // const organization = await prisma.membership.findMany({
+                    //     where: {
+                    //         userId: this.id
+                    //     }
+                    // })
+                    // const issues = await prisma.issue.findMany({
+                    //     where: {
+                    //         boardId: boardId
+                    //     }
+                    // })
+                    // const sections = await prisma.section.findMany({
+                    //     where: {
+                    //         boardId: boardId
+                    //     }
+                    // })
+                    const boards = await prisma.board.findMany({
                         where: {
-                            boardId: boardId
+                            organisationId: organizationId
                         }
                     })
-                    const sections = await prisma.section.findMany({
-                        where: {
-                            boardId: boardId
-                        }
-                    })
-                    if (!userDetail || !issues) return;
+                    if (!userDetail) return;
                     this.username = userDetail.username;
                     this.id = userDetail.id;
                     UserManager.getInstance().addUser(this);
-                    issues.forEach((item) =>
-                        IssueManager.getInstance().addTask(item)
-                    )
+                    // issues.forEach((item) =>
+                    //     IssueManager.getInstance().addTask(item)
+                    // )
                     this.ws.send(JSON.stringify({
                         type: "init-state",
                         payload: {
                             id: this.id,
-                            sections,
-                            users: UserManager.getInstance().getUsers(),
-                            issues
+                            boards,
+                            users: UserManager.getInstance().getUsers()
                         }
                     }))
                     break;

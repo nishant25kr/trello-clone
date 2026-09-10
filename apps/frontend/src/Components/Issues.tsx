@@ -9,6 +9,7 @@ export const Issue = () => {
     const [issues, setIssues] = useState<any[] | null>()
     const [users, setUsers] = useState<any[] | null>(null)
     const [sections, setSections] = useState<any[] | null>(null)
+    const [boards, setBoards] = useState<any[]>([])
     useEffect(() => {
         const ws = new WebSocket('ws://localhost:8080');
         wsRef.current = ws;
@@ -28,8 +29,9 @@ export const Issue = () => {
             switch (msg.type) {
                 case "init-state":
                     setIssues(msg.payload.issues)
-                    setUsers(msg.payload.users)
-                    setSections(msg.payload.sections)
+                    setUsers(msg.payload.users);
+                    setSections(msg.payload.sections);
+                    setBoards(msg.payload.boards);
                     break;
 
                 default:
@@ -41,10 +43,14 @@ export const Issue = () => {
     return (
         <>
             <div>
-                <h1>issues</h1>
-                <h1>{params.token}</h1>
-                <div>
-                    <table>
+                <select name="board" id="" value={boards}>
+                    {boards?.map((item) => (
+                        <option value="">{item.title}</option> 
+                    ))}
+                </select>
+
+                <div className="border-2 m-2">
+                    <table className="m-2 mx-auto w-full h-full">
                         <thead>
                             <tr className="bg-gray-100">
                                 {sections?.map((section) => (
@@ -58,7 +64,6 @@ export const Issue = () => {
                                         <td className="border px-4 py-2">{issue.sectionId === sections?.[0]?.id ? issue.title : ''}</td>
                                         <td className="border px-4 py-2">{issue.sectionId === sections?.[1]?.id ? issue.title : ''}</td>
                                         <td className="border px-4 py-2">{issue.sectionId === sections?.[2]?.id ? issue.title : ''}</td>
-
                                     </tr>
                                 ))
                             }   
