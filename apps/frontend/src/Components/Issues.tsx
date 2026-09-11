@@ -8,18 +8,41 @@ export const Issue = () => {
     const [boardId, setBoardId] = useState<string | null>('a00fa65a-556f-4896-96e6-925b8b96bdec')
     const [issues, setIssues] = useState<any[] | null>()
     const [users, setUsers] = useState<any[] | null>(null)
-    const [sections, setSections] = useState<any[] | null>(null)
+    const [sections, setSections] = useState<any[]>([])
+    const [board, setBoard] = useState<string>('')
     const [boards, setBoards] = useState<any[]>([])
+
+    function getSections(id:string) {
+        setBoard(boards.find((item) => item.id === id)?.title || '')
+        console.log("boardId", boards.find((item) => item.id === id)?.title || '')
+        console.log("hello from section")
+        if(!wsRef.current) console.log("not ws");
+
+        wsRef.current?.send(
+            JSON.stringify({
+                type:'change-board',
+                payload:{
+                    boardId:id
+                }
+            })
+        )
+    }
+
+    useEffect(()=>{
+        setBoard(boards[0]?.title)
+    },[boards])
+
     useEffect(() => {
         const ws = new WebSocket('ws://localhost:8080');
         wsRef.current = ws;
-
+        
         ws.onopen = () => {
             ws.send(JSON.stringify({
                 type: 'join',
                 payload: {
                     boardId: boardId,
-                    token: params.token
+                    token: params.token,
+                    organizationId: "97680c3a-d8c4-4b7e-ad9d-c55efd671113"
                 }
             }))
         }
@@ -34,6 +57,11 @@ export const Issue = () => {
                     setBoards(msg.payload.boards);
                     break;
 
+                case 'update-sections':
+                    console.log("hello from inside",msg)
+                    setSections(msg.payload.sections)
+                    break;
+
                 default:
                     break;
             }
@@ -42,9 +70,21 @@ export const Issue = () => {
 
     return (
         <>
+        {JSON.stringify(sections)}
             <div>
-                <select name="board" id="" value={boards}>
-                    {boards?.map((item) => (
+                <select 
+                    name="board" 
+                    id="" 
+                    onChange={(e) => getSections(e.target.value)} 
+                    value={board}
+                    >
+                        {boards?.map((item) => (
+                            <option value={item.id}>{item.title}</option>
+                        ))}
+                </select>
+                
+                <select name="board" id="" value={sections}>
+                    {sections?.map((item) => (
                         <option value="">{item.title}</option> 
                     ))}
                 </select>

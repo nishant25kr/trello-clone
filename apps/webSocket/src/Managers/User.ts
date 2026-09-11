@@ -22,14 +22,11 @@ export class User {
             switch (parsedData.type) {
                 case 'join':
                     const token = parsedData.payload.token;
-                    const boardId = parsedData.payload.boardId
                     const organizationId = parsedData.payload.organizationId
-                    console.log("message",parsedData.payload)
-                    if(!token || !boardId){
+                    if(!token || !organizationId) {
                         this.ws.send("error while fetching user detail from token")
                         return;
                     }  
-
                     let user;
                     try {
                         user = jwt.verify(token, JWTSECRET!);
@@ -44,39 +41,49 @@ export class User {
                             id: this.id
                         }
                     })
-                    // const organization = await prisma.membership.findMany({
-                    //     where: {
-                    //         userId: this.id
-                    //     }
-                    // })
-                    // const issues = await prisma.issue.findMany({
-                    //     where: {
-                    //         boardId: boardId
-                    //     }
-                    // })
-                    // const sections = await prisma.section.findMany({
-                    //     where: {
-                    //         boardId: boardId
-                    //     }
-                    // })
                     const boards = await prisma.board.findMany({
                         where: {
                             organisationId: organizationId
+                        }
+                    })
+                    if (!boards) {
+                        this.ws.send("no boards found for this organization")
+                        return;
+                    }
+                    const sections = await prisma.section.findMany({
+                        where:{
+                            boardId: boards[0]?.id
                         }
                     })
                     if (!userDetail) return;
                     this.username = userDetail.username;
                     this.id = userDetail.id;
                     UserManager.getInstance().addUser(this);
-                    // issues.forEach((item) =>
-                    //     IssueManager.getInstance().addTask(item)
-                    // )
                     this.ws.send(JSON.stringify({
                         type: "init-state",
                         payload: {
                             id: this.id,
                             boards,
+                            sections,
                             users: UserManager.getInstance().getUsers()
+
+                        }
+                    }))
+                    break;
+
+                case 'change-board':
+                    const boardId = parsedData.payload.boardId;
+                    console.log("boardId", boardId)
+                    const sectionsForBoard = await prisma.section.findMany({
+                        where: {
+                            boardId: boardId
+                        }
+                    })
+                    console.log("sectionsForBoard", sectionsForBoard)
+                    this.ws.send(JSON.stringify({
+                        type: 'update-sections',
+                        payload: {
+                            sections: sectionsForBoard
                         }
                     }))
                     break;
