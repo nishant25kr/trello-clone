@@ -12,9 +12,15 @@ export const Issue = () => {
     const [board, setBoard] = useState<string>('')
     const [boards, setBoards] = useState<any[]>([])
 
+    function addSection(){
+        //todo: add logic of adding section
+    }
+
     function getSections(id:string) {
-        setBoard(boards.find((item) => item.id === id)?.title || '')
-        console.log("boardId", boards.find((item) => item.id === id)?.title || '')
+        const selectedBoard = boards.find((item) => item.id === id)
+        setBoardId(id)
+        setBoard(selectedBoard?.title || '')
+        console.log("boardId", selectedBoard?.title || '')
         console.log("hello from section")
         if(!wsRef.current) console.log("not ws");
 
@@ -29,7 +35,9 @@ export const Issue = () => {
     }
 
     useEffect(()=>{
-        setBoard(boards[0]?.title)
+        const firstBoardId = boards[0]?.id || ''
+        setBoardId(firstBoardId)
+        setBoard(boards[0]?.title || '')
     },[boards])
 
     useEffect(() => {
@@ -71,32 +79,41 @@ export const Issue = () => {
     return (
         <>
         {JSON.stringify(sections)}
+        {board}
             <div>
                 <select 
                     name="board" 
-                    id="" 
+                    id="board" 
                     onChange={(e) => getSections(e.target.value)} 
                     value={board}
                     >
                         {boards?.map((item) => (
                             <option value={item.id}>{item.title}</option>
                         ))}
+
                 </select>
                 
-                <select name="board" id="" value={sections}>
-                    {sections?.map((item) => (
-                        <option value="">{item.title}</option> 
-                    ))}
-                </select>
-
                 <div className="border-2 m-2">
                     <table className="m-2 mx-auto w-full h-full">
-                        <thead>
+                        <thead className="flex w-full">
                             <tr className="bg-gray-100">
                                 {sections?.map((section) => (
                                     <td className="border px-4 py-2">{section.title}</td>
                                 ))}
+                            
                             </tr>
+
+                            <div>
+                                <button
+                                        type="button"
+                                        className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                        onClick={() => addSection()}
+                                        >
+                                        Add Section
+                                </button>   
+                                <input type="text" placeholder="Section name" />
+                            </div>
+
                         </thead>
                         <tbody>
                             {issues?.map((issue) => (
