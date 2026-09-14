@@ -2,48 +2,59 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom"
 
 export const Issue = () => {
-    const params = useParams()
-    let ws = useRef<WebSocket>(null)
+    const params = useParams();
+    let ws = useRef<WebSocket>(null);
     const wsRef = useRef<WebSocket | null>(null);
-    const [boardId, setBoardId] = useState<string | null>('a00fa65a-556f-4896-96e6-925b8b96bdec')
-    const [issues, setIssues] = useState<any[] | null>()
-    const [users, setUsers] = useState<any[] | null>(null)
-    const [sections, setSections] = useState<any[]>([])
-    const [board, setBoard] = useState<string>('')
-    const [boards, setBoards] = useState<any[]>([])
+    const [boardId, setBoardId] = useState<string | null>('a00fa65a-556f-4896-96e6-925b8b96bdec');
+    const [issues, setIssues] = useState<any[] | null>();
+    const [users, setUsers] = useState<any[] | null>(null);
+    const [sections, setSections] = useState<any[]>([]);
+    const [board, setBoard] = useState<string>('');
+    const [boards, setBoards] = useState<any[]>([]);
+    const [title, setTitle] = useState<string | null>(null);
 
-    function addSection(){
+    function addSection() {
         //todo: add logic of adding section
-    }
-
-    function getSections(id:string) {
-        const selectedBoard = boards.find((item) => item.id === id)
-        setBoardId(id)
-        setBoard(selectedBoard?.title || '')
-        console.log("boardId", selectedBoard?.title || '')
-        console.log("hello from section")
-        if(!wsRef.current) console.log("not ws");
-
+        console.log("seding create section")
         wsRef.current?.send(
             JSON.stringify({
-                type:'change-board',
-                payload:{
-                    boardId:id
+                type: "add-section",
+                payload: {
+                    section: title,
+                    boardId: boardId
                 }
             })
         )
     }
 
-    useEffect(()=>{
+    function getSections(id: string) {
+        const selectedBoard = boards.find((item) => item.id === id)
+        setBoardId(id)
+        setBoard(selectedBoard?.title || '')
+        console.log("boardId", selectedBoard?.title || '')
+        console.log("hello from section")
+        if (!wsRef.current) console.log("not ws");
+
+        wsRef.current?.send(
+            JSON.stringify({
+                type: 'change-board',
+                payload: {
+                    boardId: id
+                }
+            })
+        )
+    }
+
+    useEffect(() => {
         const firstBoardId = boards[0]?.id || ''
         setBoardId(firstBoardId)
         setBoard(boards[0]?.title || '')
-    },[boards])
+    }, [boards])
 
     useEffect(() => {
         const ws = new WebSocket('ws://localhost:8080');
         wsRef.current = ws;
-        
+
         ws.onopen = () => {
             ws.send(JSON.stringify({
                 type: 'join',
@@ -66,9 +77,18 @@ export const Issue = () => {
                     break;
 
                 case 'update-sections':
-                    console.log("hello from inside",msg)
                     setSections(msg.payload.sections)
                     break;
+
+                case 'create-section': {
+                    const section = msg.payload?.section;
+                    if (!section) {
+                        console.warn("create-section: missing payload.section", msg);
+                        break;
+                    }
+                    setSections(prev => [...prev, section]);
+                    break;
+                }
 
                 default:
                     break;
@@ -78,21 +98,21 @@ export const Issue = () => {
 
     return (
         <>
-        {JSON.stringify(sections)}
-        {board}
+            {JSON.stringify(sections)}
+            {board}
             <div>
-                <select 
-                    name="board" 
-                    id="board" 
-                    onChange={(e) => getSections(e.target.value)} 
+                <select
+                    name="board"
+                    id="board"
+                    onChange={(e) => getSections(e.target.value)}
                     value={board}
-                    >
-                        {boards?.map((item) => (
-                            <option value={item.id}>{item.title}</option>
-                        ))}
+                >
+                    {boards?.map((item) => (
+                        <option value={item.id}>{item.title}</option>
+                    ))}
 
                 </select>
-                
+
                 <div className="border-2 m-2">
                     <table className="m-2 mx-auto w-full h-full">
                         <thead className="flex w-full">
@@ -100,33 +120,34 @@ export const Issue = () => {
                                 {sections?.map((section) => (
                                     <td className="border px-4 py-2">{section.title}</td>
                                 ))}
-                            
+
                             </tr>
 
                             <div>
                                 <button
-                                        type="button"
-                                        className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                        onClick={() => addSection()}
-                                        >
-                                        Add Section
-                                </button>   
-                                <input type="text" placeholder="Section name" />
+                                    type="button"
+                                    className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                    onClick={() => addSection()}
+                                >
+                                    Add Section
+                                </button>
+                                <input type="text" placeholder="Section name" onChange={(e) => setTitle(e.target.value)} />
                             </div>
 
                         </thead>
                         <tbody>
                             {issues?.map((issue) => (
-                                    <tr>
-                                        <td className="border px-4 py-2">{issue.sectionId === sections?.[0]?.id ? issue.title : ''}</td>
-                                        <td className="border px-4 py-2">{issue.sectionId === sections?.[1]?.id ? issue.title : ''}</td>
-                                        <td className="border px-4 py-2">{issue.sectionId === sections?.[2]?.id ? issue.title : ''}</td>
-                                    </tr>
-                                ))
-                            }   
+                                <tr>
+                                    <td className="border px-4 py-2">{issue.sectionId === sections?.[0]?.id ? issue.title : ''}</td>
+                                    <td className="border px-4 py-2">{issue.sectionId === sections?.[1]?.id ? issue.title : ''}</td>
+                                    <td className="border px-4 py-2">{issue.sectionId === sections?.[2]?.id ? issue.title : ''}</td>
+                                </tr>
+                            ))
+                            }
                         </tbody>
                     </table>
                 </div>
+
             </div>
         </>
     )

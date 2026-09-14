@@ -14,6 +14,9 @@ export class User {
     constructor(ws: WebSocket) {
         this.ws = ws;
         this.initHandler()
+        setTimeout(() => {
+            console.log("user added", this.username, this.id)
+        }, 2000);
     }
 
     initHandler() {
@@ -115,6 +118,26 @@ export class User {
                             }
                         }));
                     break;
+
+                case 'add-section':
+                    const newSection = parsedData.payload.section;
+                    const boardIdForSection = parsedData.payload.boardId;
+                    await prisma.section.create({
+                        data: {
+                            title: newSection,
+                            boardId: boardIdForSection
+                        }
+                    })    
+                    UserManager.getInstance().broadcast(
+                        this,
+                        JSON.stringify({
+                            type: "create-section",
+                            payload: {
+                                section: newSection,
+                                boardId: boardIdForSection
+                            }
+                        }));
+                break;
 
                 default:
                     console.log('Unknown message type: %s', parsedData.type);
