@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom"
 
+interface Section{
+    id: string;
+    title: string;
+}
+
 export const Issue = () => {
     const params = useParams();
     let ws = useRef<WebSocket>(null);
@@ -8,20 +13,39 @@ export const Issue = () => {
     const [boardId, setBoardId] = useState<string | null>('a00fa65a-556f-4896-96e6-925b8b96bdec');
     const [issues, setIssues] = useState<any[] | null>();
     const [users, setUsers] = useState<any[] | null>(null);
-    const [sections, setSections] = useState<any[]>([]);
+    const [sections, setSections] = useState<Section[]>([]);
     const [board, setBoard] = useState<string>('');
     const [boards, setBoards] = useState<any[]>([]);
-    const [title, setTitle] = useState<string | null>(null);
+    const [title, setTitle] = useState<string>('')
+    
 
     function addSection() {
         //todo: add logic of adding section
         console.log("seding create section")
+        const newSection: Section = {
+            id : "aldsjfk",
+            title : title
+        }
+        setSections(prev => [...prev, newSection])
         wsRef.current?.send(
             JSON.stringify({
                 type: "add-section",
                 payload: {
                     section: title,
                     boardId: boardId
+                }
+            })
+        )
+        setTitle('')
+    }
+
+    function deleteSection(id: string){
+        wsRef.current?.send(
+            JSON.stringify({
+                type:"delete-section",
+                payload:{
+                    sectionId:id,
+                    boardId:boardId
                 }
             })
         )
@@ -70,6 +94,7 @@ export const Issue = () => {
             const msg = JSON.parse(event.data as string);
             switch (msg.type) {
                 case "init-state":
+                    console.log("issue",msg.payload.issues);
                     setIssues(msg.payload.issues)
                     setUsers(msg.payload.users);
                     setSections(msg.payload.sections);
@@ -77,11 +102,14 @@ export const Issue = () => {
                     break;
 
                 case 'update-sections':
+                    setIssues(msg.payload.issues)
                     setSections(msg.payload.sections)
                     break;
 
                 case 'create-section': {
+                    console.log('recieved create message');
                     const section = msg.payload?.section;
+                    console.log("section",section);
                     if (!section) {
                         console.warn("create-section: missing payload.section", msg);
                         break;
@@ -98,8 +126,7 @@ export const Issue = () => {
 
     return (
         <>
-            {JSON.stringify(sections)}
-            {board}
+            {users?.length}
             <div>
                 <select
                     name="board"
@@ -118,7 +145,9 @@ export const Issue = () => {
                         <thead className="flex w-full">
                             <tr className="bg-gray-100">
                                 {sections?.map((section) => (
-                                    <td className="border px-4 py-2">{section.title}</td>
+                                    <td className="border px-4 py-2">{section.title}
+                                    <button className="border m-2" onClick={()=> deleteSection(section.id)}>x</button>
+                                    </td>
                                 ))}
 
                             </tr>
@@ -131,7 +160,8 @@ export const Issue = () => {
                                 >
                                     Add Section
                                 </button>
-                                <input type="text" placeholder="Section name" onChange={(e) => setTitle(e.target.value)} />
+                                
+                                <input type="text" value={title} placeholder="Section name" onChange={(e) => setTitle(e.target.value)} />
                             </div>
 
                         </thead>

@@ -56,8 +56,21 @@ export class User {
                     const sections = await prisma.section.findMany({
                         where:{
                             boardId: boards[0]?.id
+                        },
+                        select: {
+                            id: true,
+                            title: true,
                         }
                     })
+                    const issues = await prisma.issue.findMany({
+                        where: {
+                            boardId: boards[0]?.id
+                        }
+                    })
+                    if (!issues) {
+                        this.ws.send("no issues found for this board")
+                        return;
+                    }
                     if (!userDetail) return;
                     this.username = userDetail.username;
                     this.id = userDetail.id;
@@ -68,25 +81,31 @@ export class User {
                             id: this.id,
                             boards,
                             sections,
+                            issues,
                             users: UserManager.getInstance().getUsers()
-
                         }
                     }))
                     break;
 
                 case 'change-board':
                     const boardId = parsedData.payload.boardId;
-                    console.log("boardId", boardId)
                     const sectionsForBoard = await prisma.section.findMany({
                         where: {
                             boardId: boardId
                         }
                     })
                     console.log("sectionsForBoard", sectionsForBoard)
+                    const issuesForBoard = await prisma.issue.findMany({
+                        where: {
+                            boardId: boardId
+                        }
+                    })
+                    console.log("issuesForBoard", issuesForBoard)
                     this.ws.send(JSON.stringify({
                         type: 'update-sections',
                         payload: {
-                            sections: sectionsForBoard
+                            sections: sectionsForBoard,
+                            issues: issuesForBoard
                         }
                     }))
                     break;
@@ -122,7 +141,7 @@ export class User {
                 case 'add-section':
                     const newSection = parsedData.payload.section;
                     const boardIdForSection = parsedData.payload.boardId;
-                    await prisma.section.create({
+                    const createdSection = await prisma.section.create({
                         data: {
                             title: newSection,
                             boardId: boardIdForSection
@@ -133,8 +152,27 @@ export class User {
                         JSON.stringify({
                             type: "create-section",
                             payload: {
-                                section: newSection,
+                                section: createdSection,
                                 boardId: boardIdForSection
+                            }
+                        }));
+                break;
+
+                case 'delete-section':
+                    const sectionId = parsedData.payload.sectionId;
+                    const boardIdForDeleteSection = parsedData.payload.boardId;
+                    await prisma.section.delete({
+                        where: {
+                            id: sectionId
+                        }
+                    })
+                    UserManager.getInstance().broadcast(
+                        this,
+                        JSON.stringify({
+                            type: "delete-section",
+                            payload: {
+                                sectionId: sectionId,
+                                boardId: boardIdForDeleteSection
                             }
                         }));
                 break;
