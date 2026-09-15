@@ -6,41 +6,45 @@ interface Section{
     title: string;
 }
 
+interface Issue {
+    id: string;
+    title: string;
+    sectionId: string;
+}
+
+interface Board {
+    id: string;
+    title: string;
+}
+
 export const Issue = () => {
     const params = useParams();
-    let ws = useRef<WebSocket>(null);
     const wsRef = useRef<WebSocket | null>(null);
-    const [boardId, setBoardId] = useState<string | null>('a00fa65a-556f-4896-96e6-925b8b96bdec');
-    const [issues, setIssues] = useState<any[] | null>();
-    const [users, setUsers] = useState<any[] | null>(null);
+    const [boardId, setBoardId] = useState<string>('a00fa65a-556f-4896-96e6-925b8b96bdec');
+    const [issues, setIssues] = useState<Issue[]>([]);
+    const [users, setUsers] = useState<unknown[]>([]);
     const [sections, setSections] = useState<Section[]>([]);
-    const [board, setBoard] = useState<string>('');
-    const [boards, setBoards] = useState<any[]>([]);
-    const [title, setTitle] = useState<string>('')
-    
+    const [boards, setBoards] = useState<Board[]>([]);
+    const [title, setTitle] = useState('')
+    const [loading, setLoading] = useState(true);
+
 
     function addSection() {
-        //todo: add logic of adding section
-        console.log("seding create section")
-        const newSection: Section = {
-            id : "aldsjfk",
-            title : title
-        }
-        setSections(prev => [...prev, newSection])
+        if (!title.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
         wsRef.current?.send(
             JSON.stringify({
                 type: "add-section",
                 payload: {
-                    section: title,
+                    section: title.trim(),
                     boardId: boardId
                 }
             })
         )
-        setTitle('')
+        setTitle('');
     }
 
     function deleteSection(id: string){
-        wsRef.current?.send(
+        if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(
             JSON.stringify({
                 type:"delete-section",
                 payload:{
@@ -49,17 +53,12 @@ export const Issue = () => {
                 }
             })
         )
+        setSections(prev => prev.filter(section => section.id !== id))
     }
 
     function getSections(id: string) {
-        const selectedBoard = boards.find((item) => item.id === id)
         setBoardId(id)
-        setBoard(selectedBoard?.title || '')
-        console.log("boardId", selectedBoard?.title || '')
-        console.log("hello from section")
-        if (!wsRef.current) console.log("not ws");
-
-        wsRef.current?.send(
+        if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(
             JSON.stringify({
                 type: 'change-board',
                 payload: {
@@ -72,7 +71,6 @@ export const Issue = () => {
     useEffect(() => {
         const firstBoardId = boards[0]?.id || ''
         setBoardId(firstBoardId)
-        setBoard(boards[0]?.title || '')
     }, [boards])
 
     useEffect(() => {
@@ -95,15 +93,17 @@ export const Issue = () => {
             switch (msg.type) {
                 case "init-state":
                     console.log("issue",msg.payload.issues);
-                    setIssues(msg.payload.issues)
-                    setUsers(msg.payload.users);
-                    setSections(msg.payload.sections);
-                    setBoards(msg.payload.boards);
+                            setIssues(msg.payload.issues ?? [])
+                            setUsers(msg.payload.users ?? []);
+                            setSections(msg.payload.sections ?? []);
+                            setBoards(msg.payload.boards ?? []);
+                        setLoading(false);
                     break;
 
                 case 'update-sections':
-                    setIssues(msg.payload.issues)
-                    setSections(msg.payload.sections)
+                    setIssues(msg.payload.issues ?? [])
+                    setSections(msg.payload.sections ?? [])
+                    setLoading(false);
                     break;
 
                 case 'create-section': {
@@ -118,24 +118,35 @@ export const Issue = () => {
                     break;
                 }
 
+                case 'delete-section':{
+                    const id = msg.payload.sectionId
+                    setSections(prev => prev.filter(section => section.id !== id))
+                    break;
+                }
+
                 default:
                     break;
             }
         }
+
+        return () => {
+            ws.close();
+            wsRef.current = null;
+        };
     }, [])
 
     return (
         <>
-            {users?.length}
+            {loading ? <p>Loading...</p> : users.length}
             <div>
                 <select
                     name="board"
                     id="board"
                     onChange={(e) => getSections(e.target.value)}
-                    value={board}
+                    value={boardId}
                 >
-                    {boards?.map((item) => (
-                        <option value={item.id}>{item.title}</option>
+                    {boards.map((item) => (
+                        <option key={item.id} value={item.id}>{item.title}</option>
                     ))}
 
                 </select>
@@ -144,8 +155,8 @@ export const Issue = () => {
                     <table className="m-2 mx-auto w-full h-full">
                         <thead className="flex w-full">
                             <tr className="bg-gray-100">
-                                {sections?.map((section) => (
-                                    <td className="border px-4 py-2">{section.title}
+                                {sections.map((section) => (
+                                    <td key={section.id} className="border px-4 py-2">{section.title}
                                     <button className="border m-2" onClick={()=> deleteSection(section.id)}>x</button>
                                     </td>
                                 ))}
@@ -166,8 +177,8 @@ export const Issue = () => {
 
                         </thead>
                         <tbody>
-                            {issues?.map((issue) => (
-                                <tr>
+                            {issues.map((issue) => (
+                                <tr key={issue.id}>
                                     <td className="border px-4 py-2">{issue.sectionId === sections?.[0]?.id ? issue.title : ''}</td>
                                     <td className="border px-4 py-2">{issue.sectionId === sections?.[1]?.id ? issue.title : ''}</td>
                                     <td className="border px-4 py-2">{issue.sectionId === sections?.[2]?.id ? issue.title : ''}</td>
