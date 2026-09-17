@@ -2,12 +2,11 @@ import type { OutgoingMessage } from "../types";
 import type { User } from "./User.js";
 
 export class UserManager {
-    private users: User[];
     static instance: UserManager
-
+    private users: Map<string, User[]>;
 
     constructor() {
-        this.users = [];
+        this.users = new Map();
     }
 
     static getInstance() {
@@ -18,17 +17,18 @@ export class UserManager {
         return this.instance
     }
 
-    public getUsers() {
+    public getUsers(boardId: string): {id: string, username: string}[] {
         const res: any[] = [];
-        this.users.forEach( (u) => {
+        if(!this.users.has(boardId)) return res;
+        this.users.get(boardId)?.forEach( (u) => {
             res.push({id:u.id, username:u.username});
         })
         return res
     }
 
-    public addUser(user: User) {
-        if(this.users.find(u => u.id === user.id)) return;
-        this.users.push(user)
+    public addUser(boardId: string, user: User) {
+        if(this.users.has(boardId)) return;
+        this.users.set(boardId, [...(this.users.get(boardId) || []), user])
         const message = JSON.stringify({
             type: "user-joined",
             payload: {
@@ -36,18 +36,21 @@ export class UserManager {
                 username: user.username
             }
         })
-        this.broadcast(user, message)
+        this.broadcast(boardId, user, message)
     }
 
-    public RemoveUser(user: User){
-        const filteredUser = this.users.filter(item => item.id !== user.id)
-        
+    public RemoveUser(boardId: string, user: User){
+        const filteredUser = this.users.get(boardId)?.filter(item => item.id !== user.id)
+        if(filteredUser) {
+            this.users.set(boardId, filteredUser)
+        }
     }
 
-    public broadcast(sender: User, message: any) {
-        if (!this.users.find(u => u.id === sender.id)) return;
-
-        this.users.forEach(i => {
+    public broadcast(boardId: string, sender: User, message: any) {
+        console.log("broadcasting message to boardId", boardId, "from sender", sender.id, "message", message)
+        if (!this.users.get(boardId)?.find(u => u.id === sender.id)) return;
+        console.log(this.users.get(boardId));
+        this.users.get(boardId)?.forEach(i => {
             if (i.id !== sender.id) {
                 i.ws.send(message)
             }

@@ -26,10 +26,10 @@ export class User {
                 case 'join':
                     const token = parsedData.payload.token;
                     const organizationId = parsedData.payload.organizationId
-                    if(!token || !organizationId) {
+                    if (!token || !organizationId) {
                         this.ws.send("error while fetching user detail from token")
                         return;
-                    }  
+                    }
                     let user;
                     try {
                         user = jwt.verify(token, JWTSECRET!);
@@ -54,7 +54,7 @@ export class User {
                         return;
                     }
                     const sections = await prisma.section.findMany({
-                        where:{
+                        where: {
                             boardId: boards[0]?.id
                         },
                         select: {
@@ -74,15 +74,18 @@ export class User {
                     if (!userDetail) return;
                     this.username = userDetail.username;
                     this.id = userDetail.id;
-                    UserManager.getInstance().addUser(this);
+                    UserManager.getInstance().addUser(boards[0]?.id || "", this);
                     this.ws.send(JSON.stringify({
                         type: "init-state",
                         payload: {
-                            id: this.id,
+                            user: {
+                                id: this.id,
+                                username: this.username,
+                            },
                             boards,
                             sections,
                             issues,
-                            users: UserManager.getInstance().getUsers()
+                            users: UserManager.getInstance().getUsers(boards[0]?.id || "")
                         }
                     }))
                     break;
@@ -110,15 +113,39 @@ export class User {
                     }))
                     break;
 
-                case 'create-issue':
+                case 'create-task':
                     const createdBy = parsedData.payload.createdBy;
-                    IssueManager.getInstance().addTask(parsedData.payload.issue);
-                    UserManager.getInstance().broadcast(this,
-                        JSON.stringify({
-                            type: "issue-created",
+                    //todo: add createdBy to issue model and add it to the issue object
+                    console.log("parsedData", parsedData)
+                    try {
+                        await prisma.issue.create({
+                            data: {
+                                title: parsedData.payload.title,
+                                description: parsedData.payload.description,
+                                boardId: parsedData.payload.boardId,
+                                sectionId: parsedData.payload.sectionId
+                            }
+                        })
+                    } catch (error: any) {
+                        console.error("error while creating issue", error)
+                        this.ws.send(JSON.stringify({
+                            type: "error",
                             payload: {
-                                createdBy: createdBy,
-                                issue: parsedData.payload.issue
+                                message: error.message
+                            }
+                        }))
+                        return;
+                    }
+                    IssueManager.getInstance().addTask(parsedData.payload.boardId, parsedData.payload.issue);
+                    UserManager.getInstance().broadcast(
+                        parsedData.payload.boardId, 
+                        this,
+                        JSON.stringify({
+                            type: "create-task",
+                            payload: {
+                                id: 'default-id',
+                                title: parsedData.payload.title,
+                                sectionId: parsedData.payload.sectionId,
                             }
                         }));
                     break;
@@ -126,8 +153,9 @@ export class User {
                 case 'update-section':
                     const issueId = parsedData.payload.issueId;
                     const updatedSection = parsedData.payload.updatedSection;
-                    IssueManager.getInstance().changeSection(issueId, updatedSection)
+                    IssueManager.getInstance().changeSection(boardId, issueId, updatedSection)
                     UserManager.getInstance().broadcast(
+                        boardId,
                         this,
                         JSON.stringify({
                             type: "update-issue",
@@ -146,8 +174,9 @@ export class User {
                             title: newSection,
                             boardId: boardIdForSection
                         }
-                    })    
+                    })
                     UserManager.getInstance().broadcast(
+                        boardIdForSection,
                         this,
                         JSON.stringify({
                             type: "create-section",
@@ -156,7 +185,7 @@ export class User {
                                 boardId: boardIdForSection
                             }
                         }));
-                break;
+                    break;
 
                 case 'delete-section':
                     const sectionId = parsedData.payload.sectionId;
@@ -167,6 +196,7 @@ export class User {
                         }
                     })
                     UserManager.getInstance().broadcast(
+                        boardIdForDeleteSection,
                         this,
                         JSON.stringify({
                             type: "delete-section",
@@ -175,7 +205,7 @@ export class User {
                                 boardId: boardIdForDeleteSection
                             }
                         }));
-                break;
+                    break;
 
                 default:
                     console.log('Unknown message type: %s', parsedData.type);
