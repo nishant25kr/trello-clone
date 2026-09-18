@@ -56,6 +56,55 @@ export const Issue = () => {
     )
   }
 
+  function moveForward(id: string) {
+    const currentTask = task.find(item => item.id === id);
+    const currentSectionIndex = sections.findIndex(
+      section => section.id === currentTask?.sectionId
+    );
+    const nextSection = sections[currentSectionIndex + 1];
+
+    if (!nextSection) return;
+
+    setTask(prev => prev.map(item =>
+      item.id === id ? { ...item, sectionId: nextSection.id } : item
+    ));
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current?.send(
+      JSON.stringify({
+        type: 'move-task',
+        payload: {
+          issueId: id,
+          boardId: boardId,
+          updatedSection: nextSection?.id
+        }
+      })
+    )
+  }
+
+  function moveBackward(id: string) {
+    const currentTask = task.find(item => item.id === id);
+    const currentSectionIndex = sections.findIndex(
+      section => section.id === currentTask?.sectionId
+    );
+    const previousSection = sections[currentSectionIndex - 1];
+
+    if (!previousSection) return;
+
+    setTask(prev => prev.map(item =>
+      item.id === id ? { ...item, sectionId: previousSection.id } : item
+    ));
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current?.send(
+      JSON.stringify({
+        type: 'move-task',
+        payload: {
+          issueId: id,
+          boardId: boardId,
+          updatedSection: previousSection?.id
+        }
+      })
+    )
+  }
 
   function addSection() {
     if (!title.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
@@ -139,7 +188,7 @@ export const Issue = () => {
           setChangingBoard(false);
           break;
 
-        case 'create-section': 
+        case 'create-section':
           console.log('recieved create message');
           const section = msg.payload?.section;
           console.log("section", section);
@@ -151,7 +200,7 @@ export const Issue = () => {
           break;
 
         case 'create-task':
-          console.log("inside create task",msg)
+          console.log("inside create task", msg)
           const title = msg.payload.task;
           const sectionId = msg.payload.sectionId;
           const id = msg.payload.id;
@@ -161,6 +210,29 @@ export const Issue = () => {
             sectionId: sectionId
           }
           setSections(prev => [...prev, task]);
+          break;
+
+        case 'update-issue':
+          const issueId = msg.payload.issueId;
+          const updatedSection = msg.payload.updatedSection;
+          setTask(prev => prev.map(item =>
+            item.id === issueId ? { ...item, sectionId: updatedSection } : item
+          ));
+          break;
+
+        case 'delete-section':
+          const sectionIdToDelete = msg.payload.sectionId;
+          setSections(prev => prev.filter(section => section.id !== sectionIdToDelete));
+          break;
+
+        case 'user-joined':
+          const newUser = msg.payload;
+          setUsers(prev => [...prev, newUser]);
+          break;
+
+        case 'user-left':
+          const userIdToRemove = msg.payload.id;
+          setUsers(prev => prev.filter((user: any) => user.id !== userIdToRemove));
           break;
 
         default:
@@ -221,14 +293,43 @@ export const Issue = () => {
                       <div className="space-y-2">
                         {task
                           .filter((issue) => issue.sectionId === section.id)
-                          .map((issue) => (
-                            <div
-                              key={issue.id}
-                              className="rounded border bg-white p-3 shadow-sm"
-                            >
-                              {issue.title}
-                            </div>
-                          ))}
+                          .map((issue) => {
+                            const sectionIndex = sections.findIndex(
+                              (item) => item.id === section.id,
+                            );
+
+                            return (
+                              <div
+                                key={issue.id}
+                                className="flex w-full items-stretch overflow-hidden rounded border bg-white shadow-sm"
+                              >
+                                <button
+                                  type="button"
+                                  className="px-3 text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                                  onClick={() => moveBackward(issue.id)}
+                                  disabled={sectionIndex <= 0}
+                                  aria-label={`Move ${issue.title} to the previous section`}
+                                  title="Move to previous section"
+                                >
+                                  ←
+                                </button>
+                                <div className="min-w-0 flex-1 p-3">
+                                  <p className="break-words">{issue.title}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="px-3 text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                                  onClick={() => moveForward(issue.id)}
+                                  disabled={sectionIndex >= sections.length - 1}
+                                  aria-label={`Move ${issue.title} to the next section`}
+                                  title="Move to next section"
+                                >
+                                  →
+                                </button>
+                              </div>
+                            );
+                          })}
+
                       </div>
 
                       <div className="mt-3">

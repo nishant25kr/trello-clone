@@ -207,6 +207,31 @@ export class User {
                         }));
                     break;
 
+                case 'move-task':
+                    const issueIdToMove = parsedData.payload.issueId;
+                    const updatedSectionForMove = parsedData.payload.updatedSection;
+                    const boardIdForMove = parsedData.payload.boardId;
+                    await prisma.issue.update({
+                        where: {
+                            id: issueIdToMove
+                        },
+                        data: {
+                            sectionId: updatedSectionForMove
+                        }
+                    })
+                    IssueManager.getInstance().changeSection(boardIdForMove, issueIdToMove, updatedSectionForMove)
+                    UserManager.getInstance().broadcast(
+                        boardIdForMove,
+                        this,
+                        JSON.stringify({
+                            type: "update-issue",
+                            payload: {
+                                issueId: issueIdToMove,
+                                updatedSection: updatedSectionForMove
+                            }
+                        }));
+                    break;
+
                 default:
                     console.log('Unknown message type: %s', parsedData.type);
             }
