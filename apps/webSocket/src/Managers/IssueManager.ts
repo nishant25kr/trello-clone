@@ -17,8 +17,10 @@ export class IssueManager {
 
     public addTask(boardId: string, issue: Issue) {
         if (!this.issues.has(boardId)) {
+            console.log("creating new board entry for boardId:", boardId);
             this.issues.set(boardId, []);
         }
+        console.log("adding issue to boardId:", boardId, "issue:", issue);
         this.issues.get(boardId)?.push(issue);
     }
 

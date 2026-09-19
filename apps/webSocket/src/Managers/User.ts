@@ -75,6 +75,9 @@ export class User {
                     this.username = userDetail.username;
                     this.id = userDetail.id;
                     UserManager.getInstance().addUser(boards[0]?.id || "", this);
+                    issues.forEach((issue) => {
+                        IssueManager.getInstance().addTask(boards[0]?.id || "", issue);
+                    })
                     this.ws.send(JSON.stringify({
                         type: "init-state",
                         payload: {
@@ -85,13 +88,17 @@ export class User {
                             boards,
                             sections,
                             issues,
+                            boardId: boards[0]?.id || "",
                             users: UserManager.getInstance().getUsers(boards[0]?.id || "")
                         }
                     }))
                     break;
 
                 case 'change-board':
-                    const boardId = parsedData.payload.boardId;
+                    const boardId = parsedData.payload.newBoardId;
+                    const currentBoardId = parsedData.payload.currentBoardId;
+                    UserManager.getInstance().RemoveUser(currentBoardId, this);
+                    UserManager.getInstance().addUser(boardId, this);
                     const sectionsForBoard = await prisma.section.findMany({
                         where: {
                             boardId: boardId
@@ -102,6 +109,9 @@ export class User {
                         where: {
                             boardId: boardId
                         }
+                    })
+                    issuesForBoard.forEach((issue) => {
+                        IssueManager.getInstance().addTask(boardId, issue);
                     })
                     console.log("issuesForBoard", issuesForBoard)
                     this.ws.send(JSON.stringify({
@@ -117,8 +127,9 @@ export class User {
                     const createdBy = parsedData.payload.createdBy;
                     //todo: add createdBy to issue model and add it to the issue object
                     console.log("parsedData", parsedData)
+                    let newIssue;
                     try {
-                        await prisma.issue.create({
+                        newIssue = await prisma.issue.create({
                             data: {
                                 title: parsedData.payload.title,
                                 description: parsedData.payload.description,
@@ -136,23 +147,32 @@ export class User {
                         }))
                         return;
                     }
-                    IssueManager.getInstance().addTask(parsedData.payload.boardId, parsedData.payload.issue);
+                    IssueManager.getInstance().addTask(parsedData.payload.boardId, newIssue);
                     UserManager.getInstance().broadcast(
-                        parsedData.payload.boardId, 
+                        parsedData.payload.boardId,
                         this,
                         JSON.stringify({
                             type: "create-task",
                             payload: {
-                                id: 'default-id',
+                                id: newIssue.id,
                                 title: parsedData.payload.title,
                                 sectionId: parsedData.payload.sectionId,
                             }
                         }));
                     break;
 
-                case 'update-section':
+                case 'update-section':{
                     const issueId = parsedData.payload.issueId;
                     const updatedSection = parsedData.payload.updatedSection;
+                    const boardId = parsedData.payload.boardId;
+                    await prisma.issue.update({
+                        where: {
+                            id: issueId
+                        },
+                        data: {
+                            sectionId: updatedSection
+                        }
+                    })
                     IssueManager.getInstance().changeSection(boardId, issueId, updatedSection)
                     UserManager.getInstance().broadcast(
                         boardId,
@@ -164,6 +184,7 @@ export class User {
                                 updatedSection
                             }
                         }));
+                    }
                     break;
 
                 case 'add-section':
@@ -231,6 +252,48 @@ export class User {
                             }
                         }));
                     break;
+
+                case 'delete-task':
+                    const issueIdToDelete = parsedData.payload.issueId;
+                    const boardIdForDelete = parsedData.payload.boardId;
+                    await prisma.issue.delete({
+                        where: {
+                            id: issueIdToDelete
+                        }
+                    })
+                    IssueManager.getInstance().deleteTask(boardIdForDelete, issueIdToDelete)
+                    UserManager.getInstance().broadcast(
+                        boardIdForDelete,
+                        this,
+                        JSON.stringify({
+                            type: "delete-issue",
+                            payload: {
+                                issueId: issueIdToDelete
+                            }
+                        }));
+                    break;    
+
+                case 'create-board':{
+                    const newBoard = parsedData.payload.board;
+                    const organizationId = parsedData.payload.organizationId;
+                    const createdBoard = await prisma.board.create({
+                        data: {
+                            title: newBoard,
+                            organisationId: organizationId
+                        }
+                    })
+                    UserManager.getInstance().broadcast(
+                        organizationId,
+                        this,
+                        JSON.stringify({
+                            type: "create-board",
+                            payload: {
+                                board: createdBoard,
+                                organizationId: organizationId
+                            }
+                        }));
+                        break;
+                }
 
                 default:
                     console.log('Unknown message type: %s', parsedData.type);

@@ -1,32 +1,12 @@
+import type { User, Task, Section, Board } from "@/types";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom"
-
-interface Section {
-  id: string;
-  title: string;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  sectionId: string;
-}
-
-interface Board {
-  id: string;
-  title: string;
-}
-
-interface User {
-  id: string,
-  username: string
-}
 
 export const Issue = () => {
   const params = useParams();
   const wsRef = useRef<WebSocket | null>(null);
   const [user, setUser] = useState<User>()
-  const [boardId, setBoardId] = useState<string>('a00fa65a-556f-4896-96e6-925b8b96bdec');
+  const [boardId, setBoardId] = useState<string>('');
   const [task, setTask] = useState<Task[]>([]);
   const [users, setUsers] = useState<unknown[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
@@ -54,6 +34,7 @@ export const Issue = () => {
         }
       })
     )
+    setTask(prev => [...prev, { id: crypto.randomUUID(), title: newtask, sectionId: sectionId }])
   }
 
   function moveForward(id: string) {
@@ -134,17 +115,20 @@ export const Issue = () => {
     setSections(prev => prev.filter(section => section.id !== id))
   }
 
-  function getSections(id: string) {
-    setBoardId(id)
+  function changeBoard(id: string) {
     setChangingBoard(true)
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(
       JSON.stringify({
         type: 'change-board',
         payload: {
-          boardId: id
+          currentBoardId: boardId,
+          newBoardId: id,
+          user: user,
+          token: params.token
         }
       })
     )
+    setBoardId(id)
   }
 
   useEffect(() => {
@@ -179,6 +163,7 @@ export const Issue = () => {
           setBoards(msg.payload.boards ?? []);
           setLoading(false);
           setChangingBoard(false);
+          setBoardId(msg.payload.boardId ?? '');
           break;
 
         case 'update-sections':
@@ -189,7 +174,7 @@ export const Issue = () => {
           break;
 
         case 'create-section':
-          console.log('recieved create message');
+          console.log('recieved create section message');
           const section = msg.payload?.section;
           console.log("section", section);
           if (!section) {
@@ -201,7 +186,7 @@ export const Issue = () => {
 
         case 'create-task':
           console.log("inside create task", msg)
-          const title = msg.payload.task;
+          const title = msg.payload.title;
           const sectionId = msg.payload.sectionId;
           const id = msg.payload.id;
           const task = {
@@ -209,7 +194,7 @@ export const Issue = () => {
             title: title,
             sectionId: sectionId
           }
-          setSections(prev => [...prev, task]);
+          setTask(prev => [...prev, task]);
           break;
 
         case 'update-issue':
@@ -257,7 +242,7 @@ export const Issue = () => {
         <select
           name="board"
           id="board"
-          onChange={(e) => getSections(e.target.value)}
+          onChange={(e) => changeBoard(e.target.value)}
           value={boardId}
         >
           {boards.map((item) => (
@@ -314,7 +299,7 @@ export const Issue = () => {
                                   ←
                                 </button>
                                 <div className="min-w-0 flex-1 p-3">
-                                  <p className="break-words">{issue.title}</p>
+                                  <p className="wrap-break-word">{issue.title}</p>
                                 </div>
                                 <button
                                   type="button"
