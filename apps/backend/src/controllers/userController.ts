@@ -46,6 +46,7 @@ const createUser = async (req: Request, res: Response) => {
 
 const signIn = async (req:Request, res:Response) => {
     const parsedData = signInSchema.safeParse(req.body);
+    console.log(parsedData)
     if(!parsedData.success){
         return res.status(400).json({ message:"Validation failed "});
     }
@@ -56,6 +57,7 @@ const signIn = async (req:Request, res:Response) => {
             }
         })
         console.log("user",user)
+        //todo: add bcrypt while saving the password in db
         if(!user) return res.status(400).json({ message:"invalid username" })
         if(user.password !== parsedData.data.password){
             return res.status(400).json({message:"Wrong password"})

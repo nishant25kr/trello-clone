@@ -146,8 +146,8 @@ export const Issue = () => {
         type: 'join',
         payload: {
           boardId: boardId,
-          token: params.token,
-          organizationId: "97680c3a-d8c4-4b7e-ad9d-c55efd671113"
+          token: localStorage.getItem("token"),
+          organizationId: params.organizationId
         }
       }))
     }

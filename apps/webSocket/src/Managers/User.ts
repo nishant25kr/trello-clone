@@ -14,9 +14,6 @@ export class User {
     constructor(ws: WebSocket) {
         this.ws = ws;
         this.initHandler()
-        setTimeout(() => {
-            console.log("user added", this.username, this.id)
-        }, 2000);
     }
 
     initHandler() {
