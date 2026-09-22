@@ -296,6 +296,10 @@ export class User {
                     console.log('Unknown message type: %s', parsedData.type);
             }
         });
+        this.ws.on('close', () => {
+            console.log('Client disconnected');
+            UserManager.getInstance().RemoveUserFromAllBoards(this);
+        });
     }
 
     destroy() {

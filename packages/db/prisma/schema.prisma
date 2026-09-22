@@ -38,6 +38,7 @@ model Board {
   organisation   Organization @relation(fields: [organisationId], references: [id])
   issues         Issue[]
   sections       Section[]
+  repositories    Repository[]
 }
 
 model Issue {
@@ -56,6 +57,26 @@ model Section {
   boardId String
   issues  Issue[]
   board   Board   @relation(fields: [boardId], references: [id])
+}
+
+model Repository {
+  id           String   @id @default(cuid())
+  githubId     String
+  owner        String
+  name         String
+  defaultBranch String
+  boardId      String
+  board        Board    @relation(fields: [boardId], references: [id])
+}
+
+model AgentJob {
+  id          String   @id @default(cuid())
+  taskId      String
+  status      String
+  branchName  String?
+  pullRequestUrl String?
+  logs        String?
+  createdAt   DateTime @default(now())
 }
 
 enum RoleEnum {

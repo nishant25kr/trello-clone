@@ -1,9 +1,12 @@
 import type { User, Task, Section, Board } from "@/types";
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
+import { CreateBoard } from "./CreateBoard";
+import { ConnectRepository } from "./ConnectRepository";
 
 export const Issue = () => {
-  const params = useParams();
+const params = useParams();
+  const navigate = useNavigate();
   const wsRef = useRef<WebSocket | null>(null);
   const [user, setUser] = useState<User>()
   const [boardId, setBoardId] = useState<string>('');
@@ -16,6 +19,7 @@ export const Issue = () => {
   const [changingBoard, setChangingBoard] = useState<boolean>(false);
   const [newtask, setNewtask] = useState<string>('')
   const [description, setDescription] = useState<string>();
+  const [organizationId, setOrganizationId] = useState<string>(params.organizationId || '')
 
   function addtask(sectionId: string) {
     if (!newtask.trim() || !wsRef.current || !description?.trim()) {
@@ -131,13 +135,21 @@ export const Issue = () => {
     setBoardId(id)
   }
 
+  function handleBoardCreated(board: Board) {
+    setBoards(prev => [...prev, board]);
+    changeBoard(board.id);
+  }
+
   useEffect(() => {
-    const firstBoardId = boards[0]?.id || ''
-    setBoardId(firstBoardId)
-  }, [boards])
+    if (!boardId && boards[0]) setBoardId(boards[0].id)
+  }, [boards, boardId])
 
   useEffect(() => {
     setChangingBoard(true)
+    if(!localStorage.getItem("token") || !params.organizationId) {
+      navigate("/auth/login");
+      return;
+    }
     const ws = new WebSocket('ws://localhost:8080');
     wsRef.current = ws;
 
@@ -238,6 +250,7 @@ export const Issue = () => {
       <div>
         {user?.username}
         {user?.id}
+        <CreateBoard onBoardCreated={handleBoardCreated}/>
 
         <select
           name="board"
@@ -250,6 +263,8 @@ export const Issue = () => {
           ))}
 
         </select>
+
+        {boardId && <ConnectRepository boardId={boardId} />}
 
         <div className="border-2 m-2">
           {changingBoard == true ?

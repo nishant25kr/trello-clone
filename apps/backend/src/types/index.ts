@@ -17,6 +17,13 @@ const createBoardSchema = z.object({
     organizationId: z.string()
 })
 
+const connectRepositorySchema = z.object({
+    githubId: z.union([z.string(), z.number()]).transform(String),
+    owner: z.string().min(1),
+    name: z.string().min(1),
+    defaultBranch: z.string().min(1),
+})
+
 const createIssueSchema = z.object({
     title: z.string(),
     description: z.string(),
@@ -45,6 +52,7 @@ export {
     createMembership, 
     createOrgSchema, 
     createBoardSchema,
+    connectRepositorySchema,
     createIssueSchema,
     createSectionSchema,
     getIssueSchema,

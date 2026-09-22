@@ -65,6 +65,23 @@ export class UserManager {
     }
 
     public handleIssueChange(id: string) {
+        //todo: implement issue change handling logic
+    }
 
+    public RemoveUserFromAllBoards(user: User) {
+        this.users.forEach((users, boardId) => {
+            const filteredUser = users.filter(item => item.id !== user.id)
+            if (filteredUser.length !== users.length) {
+                this.users.set(boardId, filteredUser)
+                const message = JSON.stringify({
+                    type: "user-left",
+                    payload: {
+                        id: user.id,
+                        username: user.username
+                    }
+                })
+                this.broadcast(boardId, user, message)
+            }
+        })
     }
 }
