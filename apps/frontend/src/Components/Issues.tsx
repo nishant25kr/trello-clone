@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom"
 import { CreateBoard } from "./CreateBoard";
 import { ConnectRepository } from "./ConnectRepository";
+import { AgentRunButton } from "./AgentRunButton";
 
 export const Issue = () => {
 const params = useParams();
@@ -315,6 +316,7 @@ const params = useParams();
                                 </button>
                                 <div className="min-w-0 flex-1 p-3">
                                   <p className="wrap-break-word">{issue.title}</p>
+                                  <AgentRunButton issueId={issue.id} />
                                 </div>
                                 <button
                                   type="button"

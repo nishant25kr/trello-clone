@@ -49,6 +49,7 @@ model Issue {
   sectionId   String
   board       Board   @relation(fields: [boardId], references: [id])
   section     Section @relation(fields: [sectionId], references: [id])
+  agentJobs   AgentJob[]
 }
 
 model Section {
@@ -60,23 +61,31 @@ model Section {
 }
 
 model Repository {
-  id           String   @id @default(cuid())
-  githubId     String
-  owner        String
-  name         String
+  id            String   @id @default(cuid())
+  githubId      String
+  owner         String
+  name          String
   defaultBranch String
-  boardId      String
-  board        Board    @relation(fields: [boardId], references: [id])
+  boardId       String
+  board         Board    @relation(fields: [boardId], references: [id])
+  agentJobs     AgentJob[]
 }
 
 model AgentJob {
-  id          String   @id @default(cuid())
-  taskId      String
-  status      String
-  branchName  String?
+  id             String   @id @default(cuid())
+  taskId         String
+  repositoryId   String
+  status         String   @default("QUEUED")
+  branchName     String?
   pullRequestUrl String?
-  logs        String?
-  createdAt   DateTime @default(now())
+  logs           String?
+  resultDiff     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  task           Issue      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  repository     Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
 }
 
 enum RoleEnum {
