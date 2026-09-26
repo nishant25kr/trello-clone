@@ -20,6 +20,11 @@ const startAgentJob = async (req: Request, res: Response) => {
             return res.status(409).json({ message: "Connect a GitHub repository to this board first" });
         }
 
+        const activeJob = await prisma.agentJob.findFirst({
+            where: { taskId: issue.id, status: { in: ["QUEUED", "RUNNING"] } },
+        });
+        if (activeJob) return res.status(202).json({ job: activeJob });
+
         const job = await prisma.agentJob.create({
             data: {
                 taskId: issue.id,
