@@ -9,7 +9,9 @@
     "check-types": "bun x tsc --noEmit"
   },
   "dependencies": {
-    "@repo/db": "workspace:*"
+    "@repo/db": "workspace:*",
+    "@types/dotenv": "^8.2.3",
+    "dotenv": "^18.0.4"
   },
   "devDependencies": {
     "@types/bun": "latest",

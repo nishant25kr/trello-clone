@@ -3,65 +3,21 @@ import { lstat, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { Sandbox } from 'e2b'
+import { KeyObject } from "node:crypto";
+import dotenv from "dotenv"
+dotenv.config()
 
 
+const REPO_DIR = "/home/user/repo";
 const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
 const pollingIntervalMs = 2_000;
 const maxIterations = 12;
 const maxFileBytes = 100_000;
 
-async function runCommand(command: string, args: string[], cwd?: string) {
-    const child = Bun.spawn([command, ...args], {
-        cwd,
-        stdout: "pipe",
-        stderr: "pipe",
-        timeout: 120_000,
-    });
-    const [stdout, stderr] = await Promise.all([
-        new Response(child.stdout).text(),
-        new Response(child.stderr).text(),
-    ]);
-    const exitCode = await child.exited;
-    if (exitCode !== 0) {
-        throw new Error(`${command} failed (${exitCode}): ${stderr.slice(0, 2_000)}`);
-    }
-    return stdout;
-}
-
-async function safePath(root: string, filePath: string) {
-    if (!filePath || isAbsolute(filePath)) throw new Error("Use a relative file path");
-
-    const target = resolve(root, filePath);
-    const relativePath = relative(root, target);
-    if (!relativePath || relativePath.startsWith(`..${sep}`) || relativePath === "..") {
-        throw new Error("Path must stay inside the repository");
-    }
-
-    const segments = relativePath.split(sep);
-    if (segments.some(segment => segment === ".git" || segment === "node_modules")) {
-        throw new Error("That path is not available to the agent");
-    }
-
-    let current = root;
-    for (const segment of segments) {
-        current = join(current, segment);
-        try {
-            if ((await lstat(current)).isSymbolicLink()) {
-                throw new Error("Symbolic links are not available to the agent");
-            }
-        } catch (error) {
-            if (error instanceof Error && error.message.includes("Symbolic links")) throw error;
-            if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-            break;
-        }
-    }
-
-    return target;
-}
-
-async function listFiles(root: string) {
-    const output = await runCommand("git", ["-C", root, "ls-files", "-z"]);
-    return output.split("\0").filter(Boolean).slice(0, 300);
+const API_KEY = process.env.E2B_API_KEY
+console.log(API_KEY);
+if (!API_KEY) {
+    console.log("no api key");
 }
 
 async function executeTool(root: string, name: string, args: Record<string, unknown>) {
@@ -131,19 +87,101 @@ const tools = [
     },
 ];
 
-async function askAgent(root: string, taskTitle: string, taskDescription: string) {
-    
-}
 
-async function startAgent(taskTitle: string, taskDescription: string) {
-    try{
-        console.log(taskTitle);
-        console.log(taskDescription);
-        const sandbox = await Sandbox.create({timeoutMs:60_000})
-        const info = await sandbox.getInfo()
-        console.log("info of sanbox",info);
-    }catch(error){
+async function startAgent(details: any) {
+    try {
 
+        const sandbox = await Sandbox.create({ apiKey: API_KEY });
+
+        console.log("Sandbox created:", sandbox.sandboxId);
+
+        // 1. Clone repository
+        const clone = await sandbox.commands.run(
+            `git clone ${details.repositoryUrl}`,
+            { timeoutMs: 120_000 }
+        );
+
+        if (clone.exitCode !== 0) {
+            throw new Error(`Clone failed: ${clone.stderr}`);
+        }
+
+        // 2. Configure Git
+        await sandbox.commands.run(
+            "git config user.name 'AI Issue Solver' && " +
+            "git config user.email 'ai-issue-solver@users.noreply.github.com'",
+            { cwd: REPO_DIR }
+        );
+
+        // 3. Create a dedicated branch
+        await sandbox.commands.run(
+            `git checkout -b ${details.branchName}`,
+            { cwd: REPO_DIR }
+        );
+
+        const askpassPath = "/tmp/git-askpass.sh";
+
+        await sandbox.files.write(
+            askpassPath,
+            [
+                "#!/bin/sh",
+                'case "$1" in',
+                '  *Username*) echo "x-access-token" ;;',
+                '  *) echo "$GITHUB_TOKEN" ;;',
+                "esac",
+                "",
+            ].join("\n")
+        );
+
+        await sandbox.commands.run(
+            `chmod 700 ${askpassPath}`,
+            { cwd: REPO_DIR }
+        );
+
+        const instructions = `
+You are an autonomous software engineering agent.
+
+Your task is to solve the provided GitHub issue.
+
+Repository: ${details.repositoryUrl}
+Task: #${details.task.title}
+Title: ${details.task.title}
+
+Issue description:
+${details.task.description}
+
+Instructions:
+1. Explore the repository before changing code.
+2. Identify the root cause of the task.
+3. Inspect all relevant files.
+4. Modify as many files as necessary.
+5. Add or update tests where appropriate.
+6. Run relevant tests and build checks.
+7. If tests fail, investigate and attempt to fix the problem.
+8. Review your changes before finishing.
+9. Do not commit or push. The backend handles Git operations.
+10. Do not claim tests passed unless you actually ran them.
+11. Do not read secrets, environment files, or Git credentials.
+12. Do not perform unrelated changes.
+
+Use the provided tools to inspect and modify the repository.
+`;
+
+
+
+
+
+
+
+
+
+
+
+
+    } catch (error) {
+
+
+    } finally {
+        // if (workspace) await rm(workspace, { recursive: true, force: true });
     }
 }
 
@@ -153,7 +191,7 @@ async function processJob(jobId: string) {
         include: { task: true, repository: true },
     });
     if (!job) return;
-    console.log("job",job)
+    console.log("job", job)
 
     let workspace: string | undefined;
     try {
@@ -163,25 +201,25 @@ async function processJob(jobId: string) {
 
         workspace = await mkdtemp(join(tmpdir(), "trello-agent-"));
         const repositoryUrl = `https://github.com/${job.repository.owner}/${job.repository.name}.git`;
-        await runCommand("git", ["clone", "--depth", "1", "--branch", job.repository.defaultBranch, repositoryUrl, workspace]);
         const branchName = `agent/${job.id}`;
-        await runCommand("git", ["-C", workspace, "switch", "-c", branchName]);
 
         await prisma.agentJob.update({
             where: { id: job.id },
             data: { branchName },
         });
 
-        // const { summary, activity } = await askAgent(workspace, job.task.title, job.task.description);
-        const summary = await startAgent(job.task.title, job.task.description);
-        // await runCommand("git", ["-C", workspace, "add", "--intent-to-add", "--", "."]);
-        // const diff = await runCommand("git", ["-C", workspace, "diff", "--no-ext-diff", "--", "."]);
-        // // const logs = [summary, ...activity].join("\n").slice(0, 50_000);
+        const details = {
+            jobId: job.id,
+            repositoryUrl: repositoryUrl,
+            branchName: branchName,
+            task: {
+                title: job.task.title,
+                description: job.task.description
+            }
+        }
 
-        // await prisma.agentJob.update({
-        //     where: { id: job.id },
-        //     data: { status: "SUCCEEDED", logs, resultDiff: diff.slice(0, 500_000) },
-        // });
+        // const { summary, activity } = await askAgent(workspace, job.task.title, job.task.description);
+        const summary = await startAgent(details);
     } catch (error) {
         const message = error instanceof Error ? error.message : "Agent job failed";
         await prisma.agentJob.update({
@@ -200,7 +238,7 @@ async function claimJob() {
         orderBy: { createdAt: "asc" },
         select: { id: true },
     });
-    console.log("queued",queued);
+    console.log("queued", queued);
     if (!queued) return false;
 
     const claim = await prisma.agentJob.updateMany({
@@ -214,12 +252,13 @@ async function claimJob() {
 }
 
 console.log("Agent worker started; polling for queued jobs");
-while (true) {
-    try {
-        const claimed = await claimJob();
-        if (!claimed) await new Promise(resolveDelay => setTimeout(resolveDelay, pollingIntervalMs));
-    } catch (error) {
-        console.error("Agent worker poll failed:", error);
-        await new Promise(resolveDelay => setTimeout(resolveDelay, pollingIntervalMs));
-    }
-}
+// while (true) {
+//     try {
+//         // const claimed = await claimJob();
+//         // if (!claimed) await new Promise(resolveDelay => setTimeout(resolveDelay, pollingIntervalMs));
+//     } catch (error) {
+//         console.error("Agent worker poll failed:", error);
+//         await new Promise(resolveDelay => setTimeout(resolveDelay, pollingIntervalMs));
+//     }
+// }
+
