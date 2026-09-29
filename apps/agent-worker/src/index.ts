@@ -3,7 +3,6 @@ import { GoogleGenAI, Type, type Content, type Part, type Tool } from "@google/g
 import { Sandbox, CommandExitError } from "e2b";
 import { posix } from "node:path";
 
-// ---------- config ----------
 interface AgentDetails {
     jobId: string;
     repositoryUrl: string;
@@ -20,6 +19,7 @@ if (!GIT_TOKEN) throw new Error("GIT_TOKEN is not set");
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL ?? "gemini-3.5-flash-lite";
 
 const REPO_DIR = "/home/user/repo";
 const ASKPASS_PATH = "/tmp/git-askpass.sh";
@@ -29,6 +29,7 @@ const MAX_ITERATIONS = 30;
 const MAX_FILE_BYTES = 100_000;
 const MAX_OUTPUT_CHARS = 20_000;
 const COMMAND_TIMEOUT_MS = 120_000;
+const MODEL_RETRY_COUNT = 3;
 
 // Adjust to match your Prisma enum for AgentJob.status
 const STATUS_SUCCESS = "SUCCEEDED";
@@ -201,6 +202,36 @@ When finished, reply with a short plain-text summary and make no further tool ca
 `;
 }
 
+function isTemporaryModelError(error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return /503|429|unavailable|high demand|overloaded|temporar/i.test(message);
+}
+
+async function generateModelContent(contents: Content[], systemInstruction: string) {
+    let lastError: unknown;
+
+    for (const model of [MODEL, FALLBACK_MODEL]) {
+        for (let attempt = 0; attempt < MODEL_RETRY_COUNT; attempt += 1) {
+            try {
+                return await ai.models.generateContent({
+                    model,
+                    contents,
+                    config: { systemInstruction, tools },
+                });
+            } catch (error) {
+                lastError = error;
+                if (!isTemporaryModelError(error) || attempt === MODEL_RETRY_COUNT - 1) break;
+
+                const delayMs = 2 ** attempt * 2_000;
+                console.warn(`Model ${model} temporarily unavailable; retrying in ${delayMs}ms`);
+                await sleep(delayMs);
+            }
+        }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 async function runAgentLoop(sandbox: Sandbox, details: AgentDetails): Promise<string> {
     const contents: Content[] = [
         { role: "user", parts: [{ text: "Start investigating and solving the issue." }] },
@@ -208,11 +239,7 @@ async function runAgentLoop(sandbox: Sandbox, details: AgentDetails): Promise<st
     const systemInstruction = buildInstructions(details);
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
-        const response = await ai.models.generateContent({
-            model: MODEL,
-            contents,
-            config: { systemInstruction, tools },
-        });
+        const response = await generateModelContent(contents, systemInstruction);
 
         const modelContent = response.candidates?.[0]?.content;
         if (modelContent) contents.push(modelContent);
