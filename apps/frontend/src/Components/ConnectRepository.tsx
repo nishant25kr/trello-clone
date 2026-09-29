@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type RepositoryDetails = {
     githubId: string;
@@ -19,6 +19,20 @@ export const ConnectRepository = ({ boardId }: ConnectRepositoryProps) => {
     const [branch, setBranch] = useState("");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
+
+    useEffect(()=>{
+        //todo: check weather the board already has repoUrl
+        (async()=>{
+            if(!boardId) return;
+            
+            const response = await axios.get("",{
+
+            })
+
+            
+            
+        })()
+    },[])
 
     async function findRepository() {
         setLoading(true);
