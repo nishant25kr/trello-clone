@@ -50,6 +50,11 @@ export class User {
                         this.ws.send("no boards found for this organization")
                         return;
                     }
+                    const repo = await prisma.repository.findFirst({
+                        where:{
+                            boardId:boards[0]?.id
+                        }
+                    })
                     const sections = await prisma.section.findMany({
                         where: {
                             boardId: boards[0]?.id
@@ -86,12 +91,13 @@ export class User {
                             sections,
                             issues,
                             boardId: boards[0]?.id || "",
-                            users: UserManager.getInstance().getUsers(boards[0]?.id || "")
+                            users: UserManager.getInstance().getUsers(boards[0]?.id || ""),
+                            repository:repo!
                         }
                     }))
                     break;
 
-                case 'change-board':
+                case 'change-board':{
                     const boardId = parsedData.payload.newBoardId;
                     const currentBoardId = parsedData.payload.currentBoardId;
                     UserManager.getInstance().RemoveUser(currentBoardId, this);
@@ -101,7 +107,11 @@ export class User {
                             boardId: boardId
                         }
                     })
-                    console.log("sectionsForBoard", sectionsForBoard)
+                    const repo = await prisma.repository.findFirst({
+                        where:{
+                            boardId:boardId
+                        }
+                    })
                     const issuesForBoard = await prisma.issue.findMany({
                         where: {
                             boardId: boardId
@@ -110,20 +120,20 @@ export class User {
                     issuesForBoard.forEach((issue) => {
                         IssueManager.getInstance().addTask(boardId, issue);
                     })
-                    console.log("issuesForBoard", issuesForBoard)
                     this.ws.send(JSON.stringify({
                         type: 'update-sections',
                         payload: {
                             sections: sectionsForBoard,
-                            issues: issuesForBoard
+                            issues: issuesForBoard,
+                            repository:repo!
                         }
                     }))
                     break;
+                }
 
                 case 'create-task':
                     const createdBy = parsedData.payload.createdBy;
                     //todo: add createdBy to issue model and add it to the issue object
-                    console.log("parsedData", parsedData)
                     let newIssue;
                     try {
                         newIssue = await prisma.issue.create({

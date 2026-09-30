@@ -21,6 +21,7 @@ const params = useParams();
   const [newtask, setNewtask] = useState<string>('')
   const [description, setDescription] = useState<string>();
   const [organizationId, setOrganizationId] = useState<string>(params.organizationId || '')
+  const [repository,setRepository] = useState<any | null>(null);
 
   function addtask(sectionId: string) {
     if (!newtask.trim() || !wsRef.current || !description?.trim()) {
@@ -174,6 +175,7 @@ const params = useParams();
           setUsers(msg.payload.users ?? []);
           setSections(msg.payload.sections ?? []);
           setBoards(msg.payload.boards ?? []);
+          setRepository(msg.payload.repository ?? {});
           setLoading(false);
           setChangingBoard(false);
           setBoardId(msg.payload.boardId ?? '');
@@ -184,6 +186,7 @@ const params = useParams();
           setSections(msg.payload.sections ?? [])
           setLoading(false);
           setChangingBoard(false);
+          setRepository(msg.payload.repository ?? null)
           break;
 
         case 'create-section':
@@ -259,13 +262,13 @@ const params = useParams();
           onChange={(e) => changeBoard(e.target.value)}
           value={boardId}
         >
-          {boards.map((item) => (
+          {boards.map((item) => ( 
             <option key={item.id} value={item.id}>{item.title}</option>
           ))}
 
         </select>
 
-        {boardId && <ConnectRepository boardId={boardId} />}
+        {boardId &&<ConnectRepository boardId={boardId} repo={repository}/>}
 
         <div className="border-2 m-2">
           {changingBoard == true ?
