@@ -27,11 +27,11 @@ export class UserManager {
     }
 
     public addUser(boardId: string, user: User) {
-        console.log("adding user")
         if (this.users.has(boardId)) {
-            console.log("boardId", boardId, "already exists in users map")
             if (this.users.get(boardId)?.find(u => u.id === user.id)) return;
-            this.users.set(boardId, [...(this.users.get(boardId) || []), user])
+            const users = this.users.get(boardId)
+            console.log("users:",users)
+            this.users.set(boardId, [...users ?? [], user])
             const message = JSON.stringify({
                 type: "user-joined",
                 payload: {
