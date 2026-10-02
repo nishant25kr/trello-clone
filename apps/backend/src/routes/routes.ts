@@ -5,16 +5,17 @@ import { createIssue, getIssue, updateIssue } from "../controllers/issueControll
 import { createSection, getSection } from "../controllers/sectionController";
 import { connectRepository, createBoard, getRepositoryBranches } from "../controllers/boardController";
 import { getAgentJob, startAgentJob } from "../controllers/agentJobController";
+import { Middleware } from "../middleware";
 
 const route = router.Router();
 
 route.post("/users", createUser);
-route.post("/organization", createOrg);
-route.post("/issue",createIssue)
-route.post("/section", createSection)
-route.post("/board",createBoard)
-route.get("/github/repository", getRepositoryBranches)
-route.post("/board/:boardId/repository", connectRepository)
+route.post("/organization", Middleware, createOrg);
+route.post("/issue",Middleware, createIssue)
+route.post("/section", Middleware, createSection)
+route.post("/board", Middleware, createBoard)
+route.get("/github/repository", Middleware, getRepositoryBranches)
+route.post("/board/:boardId/repository", Middleware, connectRepository)
 route.post("/issue/:issueId/agent-jobs", startAgentJob)
 route.get("/agent-jobs/:jobId", getAgentJob)
 route.post("/signin",signIn)

@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { prisma } from "@repo/db";
 import { signInSchema } from '../types';
 import jwt from "jsonwebtoken"
+import { jwtSecret } from '../../config.ts';
  
 const getUser = async (req: Request, res: Response) => {
     const userId = req.params.id;
@@ -60,13 +61,10 @@ const signIn = async (req:Request, res:Response) => {
         if(user.password !== parsedData.data.password){
             return res.status(400).json({message:"Wrong password"})
         }
-        console.log('jwt',process.env.JWTSECRET)
         const token = jwt.sign({
             userId : user.id,
             username: user.username,
-            //todo:figure out how to store user role
-            // role : user.role
-        },process.env.JWTSECRET!)
+        },jwtSecret as string)
         if(!token) return res.status(400).json( {message:'Error while creating token'} )
         
         return res.status(200).json({user:user, token: token});

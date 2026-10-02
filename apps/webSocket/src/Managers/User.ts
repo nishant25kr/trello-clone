@@ -3,8 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from "@repo/db";
 import { UserManager } from "./UserManager";
 import { IssueManager } from "./IssueManager";
-
-const JWTSECRET = process.env.JWTSECRET
+import {jwtSecret} from '../../config.ts';
 
 export class User {
     public id!: string;
@@ -29,7 +28,7 @@ export class User {
                     }
                     let user;
                     try {
-                        user = jwt.verify(token, JWTSECRET!);
+                        user = jwt.verify(token, jwtSecret as string);
                     } catch (error) {
                         console.error("error", error)
                         this.ws.send("error while fetching user detail from token")

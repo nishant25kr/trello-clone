@@ -1,6 +1,6 @@
 import {prisma} from "@repo/db"
 import type { Request, Response } from "express"
-import { createSectionSchema } from "../types"
+import { createSectionSchema, type AuthenticatedRequest } from "../types"
 
 const createSection = async (req:Request,res:Response) => {
     const parsedData = createSectionSchema.safeParse(req.body);
@@ -11,18 +11,25 @@ const createSection = async (req:Request,res:Response) => {
         })
     }
 
+    const authReq = req as unknown as AuthenticatedRequest;
+    if (!authReq.user?.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
     try {
         const section = await prisma.section.create({
-            data:{
+            data: {
                 title: parsedData.data.title,
-                boardId: parsedData.data.boardId
+                boardId: parsedData.data.boardId,
+                createdBy: authReq.user.userId
             }
         })
-        res.status(201).json(section)
+        if(!section) return res.status(400).json({ message:"Error creating section" })
+        res.status(200).json({section: section})
     } catch (error) {
         res.status(500).json({
             message: "Failed to create section",
-            error
+            error: error instanceof Error ? error.message : String(error)
         })
     }
 }

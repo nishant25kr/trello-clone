@@ -12,6 +12,7 @@ model User {
   username    String       @unique
   password    String
   memberships Membership[]
+  sections    Section[]    @relation("UserSections")
 }
 
 model Organization {
@@ -53,11 +54,13 @@ model Issue {
 }
 
 model Section {
-  id      String  @id @unique @default(uuid())
-  title   String
-  boardId String
-  issues  Issue[]
-  board   Board   @relation(fields: [boardId], references: [id])
+  id        String  @id @unique @default(uuid())
+  title     String
+  boardId   String
+  createdBy String
+  issues    Issue[]
+  board     Board   @relation(fields: [boardId], references: [id])
+  creater   User    @relation("UserSections", fields: [createdBy], references: [id])
 }
 
 model Repository {

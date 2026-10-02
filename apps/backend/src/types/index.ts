@@ -1,7 +1,7 @@
 import z from 'zod'
+import type { Request } from 'express'
 
 const createOrgSchema = z.object({
-    userId: z.string(),
     name: z.string(),
     description: z.string()
 })
@@ -59,3 +59,11 @@ export {
     updateIssueSchema,
     signInSchema
 }
+
+export type AuthenticatedRequest = Request & {
+    user: {
+        id?: string;
+        userId: string;
+        username: string;
+    };
+};

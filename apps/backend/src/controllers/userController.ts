@@ -1,7 +1,9 @@
 import type { Request, Response } from 'express';
 import { prisma } from "@repo/db";
 import { signInSchema } from '../types';
+import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
+import { jwtSecret } from '../../config.ts';
  
 const getUser = async (req: Request, res: Response) => {
     const userId = req.params.id;
@@ -27,8 +29,10 @@ const createUser = async (req: Request, res: Response) => {
         return res.status(400).json({ error: "Username and password are required" });
     }
     try {
+        const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
-            data: { username: username, password: password }
+            data: { username: username, password: hashedPassword },
+            select: { id: true, username: true }
         });
 
         console.log("User created successfully:", user);
@@ -39,7 +43,7 @@ const createUser = async (req: Request, res: Response) => {
 
     } catch (error: any) {
         console.error("Error creating user:", error);
-        return res.status(500).json({ errorj: error });
+        return res.status(500).json({ error: error });
     }
 
 };
@@ -57,18 +61,16 @@ const signIn = async (req:Request, res:Response) => {
             }
         })
         console.log("user",user)
-        //todo: add bcrypt while saving the password in db
         if(!user) return res.status(400).json({ message:"invalid username" })
-        if(user.password !== parsedData.data.password){
+        const isMatch = await bcrypt.compare(parsedData.data.password, user.password);
+        if(!isMatch){
             return res.status(400).json({message:"Wrong password"})
         }
-        console.log('jwt',process.env.JWTSECRET)
+        console.log('jwt',jwtSecret)
         const token = jwt.sign({
             userId : user.id,
             username: user.username,
-            //todo:figure out how to store user role
-            // role : user.role
-        },process.env.JWTSECRET!)
+        },jwtSecret as string)
         if(!token) return res.status(400).json( {message:'Error while creating token'} )
         
         return res.status(200).json({user:user, token: token});

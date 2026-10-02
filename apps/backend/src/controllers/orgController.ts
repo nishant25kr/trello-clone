@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
 import { prisma } from "@repo/db";
-import { createOrgSchema } from '../types';
+import { createOrgSchema, type AuthenticatedRequest } from '../types';
 
 const getOrg = async (req: Request, res: Response) => {
-    const userID = req.params.id;
+    const userID = (req as unknown as AuthenticatedRequest).user.userId;
     console.log(userID)
     if (!userID || Array.isArray(userID)) {
         return res.status(400).json({ error: "Organization ID is required" });
@@ -31,22 +31,13 @@ const getOrg = async (req: Request, res: Response) => {
 
 const createOrg = async (req: Request, res: Response) => {
     const parsedData = createOrgSchema.safeParse(req.body);
-
     if (!parsedData.success) {
         return res.status(404).json({ message: "Validation failed" })
     }
+    console.log(parsedData)
+    console.log("user", (req as unknown as AuthenticatedRequest).user.userId)
 
     try {
-        const userId = parsedData.data.userId
-        const user = await prisma.user.findUnique({
-            where: {
-                id: userId
-            }
-        })
-
-        if (!user) return res.status(400).json({ message: "invalid userId, user not found" });
-
-
         const org = await prisma.organization.create({
             data: {
                 name: parsedData.data.name,
@@ -54,9 +45,10 @@ const createOrg = async (req: Request, res: Response) => {
             }
         })
 
+
         const membership = await prisma.membership.create({
             data: {
-                userId: userId,
+                userId: (req as unknown as AuthenticatedRequest).user.userId,
                 organisationId: org.id,
                 role: 'ADMIN'
             }
@@ -66,7 +58,7 @@ const createOrg = async (req: Request, res: Response) => {
 
         return res.status(200).json({ message: "organization created successfully", data: org });
     } catch (error) {
-        return res.status(400).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "failed to create organization", error });
     }
 }
 
