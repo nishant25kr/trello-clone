@@ -3,7 +3,11 @@ import { prisma } from "@repo/db";
 import { createOrgSchema, type AuthenticatedRequest } from '../types';
 
 const getOrg = async (req: Request, res: Response) => {
-    const userID = (req as unknown as AuthenticatedRequest).user.userId;
+    const authReq = req as unknown as AuthenticatedRequest;
+    if (!authReq.user?.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+    const userID = authReq.user.userId;
     console.log(userID)
     if (!userID || Array.isArray(userID)) {
         return res.status(400).json({ error: "Organization ID is required" });
@@ -35,7 +39,11 @@ const createOrg = async (req: Request, res: Response) => {
         return res.status(404).json({ message: "Validation failed" })
     }
     console.log(parsedData)
-    console.log("user", (req as unknown as AuthenticatedRequest).user.userId)
+    const authReq = req as unknown as AuthenticatedRequest;
+    if (!authReq.user?.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+    console.log("user", authReq.user.userId);
 
     try {
         const org = await prisma.organization.create({
@@ -45,10 +53,9 @@ const createOrg = async (req: Request, res: Response) => {
             }
         })
 
-
         const membership = await prisma.membership.create({
             data: {
-                userId: (req as unknown as AuthenticatedRequest).user.userId,
+                userId: authReq.user.userId,
                 organisationId: org.id,
                 role: 'ADMIN'
             }
@@ -57,8 +64,8 @@ const createOrg = async (req: Request, res: Response) => {
         if (!org || !membership) return res.status(400).json({ message: "failed to create organization" });
 
         return res.status(200).json({ message: "organization created successfully", data: org });
-    } catch (error) {
-        return res.status(500).json({ message: "failed to create organization", error });
+    } catch (error: any) {
+        return res.status(500).json({ message: "failed to create organization", error: error.message });
     }
 }
 

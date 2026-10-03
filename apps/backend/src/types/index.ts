@@ -45,12 +45,18 @@ const updateIssueSchema = z.object({
 
 const signInSchema = z.object({
     username: z.string(),
-    password: z.string()
+    password: z
+        .string()
+        .min(8, { message: "Password must be at least 8 characters long" })
+        .regex(/[A-Z]/, { message: "Must contain at least one uppercase letter" })
+        .regex(/[a-z]/, { message: "Must contain at least one lowercase letter" })
+        .regex(/[0-9]/, { message: "Must contain at least one number" })
+        .regex(/[^A-Za-z0-9]/, { message: "Must contain at least one special character" })
 })
 
-export { 
-    createMembership, 
-    createOrgSchema, 
+export {
+    createMembership,
+    createOrgSchema,
     createBoardSchema,
     connectRepositorySchema,
     createIssueSchema,

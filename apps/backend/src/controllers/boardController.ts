@@ -1,6 +1,6 @@
 import type { Response, Request } from "express";
 import { prisma } from "@repo/db"
-import { connectRepositorySchema, createBoardSchema } from "../types";
+import { connectRepositorySchema, createBoardSchema, type AuthenticatedRequest } from "../types";
 
 function parseGitHubRepositoryUrl(value: string) {
     let url: URL;
@@ -69,7 +69,21 @@ const connectRepository = async (req: Request, res: Response) => {
         return res.status(400).json({ message: "Board and repository details are required" });
     }
 
+    const authReq = req as unknown as AuthenticatedRequest;
+    if (!authReq.user?.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
     try {
+        const userRole = await prisma.membership.findFirst({
+            where: {
+                userId: authReq.user?.userId,
+                boardId: boardId
+            }
+        })
+        if(!userRole || userRole.role !== "ADMIN") {
+            return res.status(403).json({ message: "Forbidden" });
+        }
         const board = await prisma.board.findUnique({ where: { id: boardId } });
         if (!board) return res.status(404).json({ message: "Board not found" });
 
@@ -87,12 +101,29 @@ const connectRepository = async (req: Request, res: Response) => {
 };
 
 const createBoard = async (req: Request, res: Response) => {
-    console.log("hello from createboard")
+
     const parsedData = createBoardSchema.safeParse(req.body);
-    console.log("parseddata",parsedData)
+    const boardId = String(req.params.boardId ?? "");
+
     if (!parsedData.success) return res.status(400).json({ message: "Validation failed" });
 
+    const authReq = req as unknown as AuthenticatedRequest;
+    if (!authReq.user?.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
     try {
+        const userRole = await prisma.membership.findFirst({
+            where: {
+                userId: authReq.user?.userId,
+                boardId: boardId
+            }
+        });
+
+        if (!userRole || userRole.role !== "ADMIN") {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+
         const board = await prisma.board.create({
             data: {
                 title: parsedData.data.title,
@@ -100,11 +131,9 @@ const createBoard = async (req: Request, res: Response) => {
             }
         })
 
-        if (!board) return res.status(400).json({ messag: "Error while craeting board" })
-
         return res.status(200).json({ data: board });
-    } catch (error: any) {
-        return res.status(400).json({ message: error.message })
+    } catch (error) {
+        return res.status(400).json({ message: error })
     }
 }
 

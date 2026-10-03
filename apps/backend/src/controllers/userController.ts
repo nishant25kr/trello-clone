@@ -13,7 +13,8 @@ const getUser = async (req: Request, res: Response) => {
     }
 
     const user = await prisma.user.findUnique({
-        where: { id: userId }
+        where: { id: userId },
+        select: { id: true, username: true }
     });
 
     if (!user) {
@@ -29,6 +30,14 @@ const createUser = async (req: Request, res: Response) => {
         return res.status(400).json({ error: "Username and password are required" });
     }
     try {
+        const existingUser = await prisma.user.findUnique({
+            where: { username: username },
+            select: { id: true }
+        });
+
+        if (existingUser) {
+            return res.status(400).json({ error: "Username already exists" });
+        }
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
             data: { username: username, password: hashedPassword },
@@ -39,7 +48,7 @@ const createUser = async (req: Request, res: Response) => {
         if(!user) {
             return res.status(500).json({ error: "Error creating user" });
         }
-        res.status(201).json(user);
+        res.status(200).json(user);
 
     } catch (error: any) {
         console.error("Error creating user:", error);
@@ -58,9 +67,13 @@ const signIn = async (req:Request, res:Response) => {
         const user = await prisma.user.findUnique({
             where:{
                 username: parsedData.data.username
+            },
+            select:{
+                id:true,
+                username:true,
+                password:true
             }
         })
-        console.log("user",user)
         if(!user) return res.status(400).json({ message:"invalid username" })
         const isMatch = await bcrypt.compare(parsedData.data.password, user.password);
         if(!isMatch){
@@ -73,7 +86,7 @@ const signIn = async (req:Request, res:Response) => {
         },jwtSecret as string)
         if(!token) return res.status(400).json( {message:'Error while creating token'} )
         
-        return res.status(200).json({user:user, token: token});
+        return res.status(200).json({user:{id: user.id, username: user.username}, token: token});
         
     } catch (error:any) {
         return res.status(500).json({ message: error.message });

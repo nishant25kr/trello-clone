@@ -1,5 +1,5 @@
 import { Login } from "@/Components/Login";
-import { SignIn } from "@/Components/SignIn";
+import { SignUp } from "@/Components/SignIn";
 import {useParams }from "react-router-dom";
 
 export const Auth = ()=> {
@@ -11,7 +11,7 @@ export const Auth = ()=> {
             {auth === "login" ? (
                 <Login />
             ) : auth === "register" ? (
-                <SignIn />
+                <SignUp />
             ) : (
                 <p>Invalid Auth Route</p>
             )}
