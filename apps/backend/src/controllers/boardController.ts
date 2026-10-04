@@ -111,12 +111,11 @@ const createBoard = async (req: Request, res: Response) => {
     if (!authReq.user?.userId) {
         return res.status(401).json({ message: "Unauthorized" });
     }
-
     try {
         const userRole = await prisma.membership.findFirst({
             where: {
                 userId: authReq.user?.userId,
-                boardId: boardId
+                organisationId: parsedData.data.organizationId
             }
         });
 

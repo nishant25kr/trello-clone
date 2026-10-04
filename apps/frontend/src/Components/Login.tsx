@@ -22,16 +22,14 @@ export const Login = () => {
             if(response.status === 200){
                 localStorage.setItem("token",response.data.token)
                 localStorage.setItem("user",JSON.stringify(response.data.user))
-                navigate(`/dashboard/${response.data.user.username}`)
-                
+                navigate(`/dashboard/${response.data.user.username}`)                
             }
-
         } catch (error: any) {
             console.error("error",error.message)
         }
     }
     return (
-        <div>
+        <div className="flex flex-col items-center justify-center h-screen">
             <h1>Login</h1>
             <input type="text" className="border" onChange={(e)=> setUsername(e.target.value)}  />username
             <input type="text" className="border" onChange={(e)=> setPassword(e.target.value)} />password <br />

@@ -3,7 +3,8 @@ import jwt from 'jsonwebtoken';
 import { prisma } from "@repo/db";
 import { UserManager } from "./UserManager";
 import { IssueManager } from "./IssueManager";
-import {jwtSecret} from '../../config.ts';
+import { jwtSecret } from '../../config.ts';
+import { ChangeBoardSchema, CreateSectionSchema, CreateTaskSchema, DeleteSectionSchema, DeleteTaskSchema, JoinRoomSchema, MoveTaskSchema } from "../utils/PayloadSchema.ts";
 
 export class User {
     public id!: string;
@@ -19,19 +20,34 @@ export class User {
         this.ws.on('message', async (data) => {
             const parsedData = JSON.parse(data.toString());
             switch (parsedData.type) {
-                case 'join':
-                    const token = parsedData.payload.token;
-                    const organizationId = parsedData.payload.organizationId
-                    if (!token || !organizationId) {
-                        this.ws.send("error while fetching user detail from token")
+                case 'join': {
+                    const isValid = JoinRoomSchema.safeParse(parsedData.payload);
+                    if (!isValid.success) {
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                payload: {
+                                    message: "Invalid payload for join"
+                                }
+                            })
+                        )
                         return;
                     }
+                    const token = parsedData.payload.token;
+                    const organizationId = parsedData.payload.organizationId
                     let user;
                     try {
                         user = jwt.verify(token, jwtSecret as string);
                     } catch (error) {
                         console.error("error", error)
-                        this.ws.send("error while fetching user detail from token")
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                payload: {
+                                    message: "Invalid token"
+                                }
+                            })
+                        )
                         return;
                     }
                     this.id = (user as jwt.JwtPayload).userId;
@@ -46,12 +62,19 @@ export class User {
                         }
                     })
                     if (!boards) {
-                        this.ws.send("no boards found for this organization")
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                payload: {
+                                    message: "No boards found for this organization"
+                                }
+                            })
+                        )
                         return;
                     }
                     const repo = await prisma.repository.findFirst({
-                        where:{
-                            boardId:boards[0]?.id
+                        where: {
+                            boardId: boards[0]?.id
                         }
                     })
                     const sections = await prisma.section.findMany({
@@ -69,8 +92,7 @@ export class User {
                         }
                     })
                     if (!issues) {
-                        this.ws.send("no issues found for this board")
-                        return;
+                        console.error("No issues found for this board")
                     }
                     if (!userDetail) return;
                     this.username = userDetail.username;
@@ -91,12 +113,26 @@ export class User {
                             issues,
                             boardId: boards[0]?.id || "",
                             users: UserManager.getInstance().getUsers(boards[0]?.id || ""),
-                            repository:repo!
+                            repository: repo!
                         }
                     }))
                     break;
+                }
 
-                case 'change-board':{
+                case 'change-board': {
+                    console.log("change-board", parsedData.payload)
+                    const isValid = ChangeBoardSchema.safeParse(parsedData.payload);
+                    if (!isValid.success) {
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                payload: {
+                                    message: "Invalid payload for change-board"
+                                }
+                            })
+                        )
+                        return;
+                    }
                     const boardId = parsedData.payload.newBoardId;
                     const currentBoardId = parsedData.payload.currentBoardId;
                     UserManager.getInstance().RemoveUser(currentBoardId, this);
@@ -107,8 +143,8 @@ export class User {
                         }
                     })
                     const repo = await prisma.repository.findFirst({
-                        where:{
-                            boardId:boardId
+                        where: {
+                            boardId: boardId
                         }
                     })
                     const issuesForBoard = await prisma.issue.findMany({
@@ -124,15 +160,26 @@ export class User {
                         payload: {
                             sections: sectionsForBoard,
                             issues: issuesForBoard,
-                            repository:repo!
+                            repository: repo!
                         }
                     }))
                     break;
                 }
 
-                case 'create-task':
-                    const createdBy = parsedData.payload.createdBy;
-                    //todo: add createdBy to issue model and add it to the issue object
+                case 'create-task': {
+                    console.log("create-task", parsedData.payload)
+                    const isValid = CreateTaskSchema.safeParse(parsedData.payload);
+                    if (!isValid.success) {
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                payload: {
+                                    message: "Invalid payload for create-task"
+                                }
+                            })
+                        )
+                        return;
+                    }
                     let newIssue;
                     try {
                         newIssue = await prisma.issue.create({
@@ -140,7 +187,8 @@ export class User {
                                 title: parsedData.payload.title,
                                 description: parsedData.payload.description,
                                 boardId: parsedData.payload.boardId,
-                                sectionId: parsedData.payload.sectionId
+                                sectionId: parsedData.payload.sectionId,
+                                createdBy: parsedData.payload.createdBy
                             }
                         })
                     } catch (error: any) {
@@ -166,19 +214,31 @@ export class User {
                             }
                         }));
                     break;
+                }
 
-                case 'update-section':{
+                case 'update-section': {
                     const issueId = parsedData.payload.issueId;
                     const updatedSection = parsedData.payload.updatedSection;
                     const boardId = parsedData.payload.boardId;
-                    await prisma.issue.update({
-                        where: {
-                            id: issueId
-                        },
-                        data: {
-                            sectionId: updatedSection
-                        }
-                    })
+                    try {
+                        await prisma.issue.update({
+                            where: {
+                                id: issueId
+                            },
+                            data: {
+                                sectionId: updatedSection
+                            }
+                        })
+                    } catch (error: any) {
+                        console.error("error while updating issue section", error)
+                        this.ws.send(JSON.stringify({
+                            type: "error",
+                            payload: {
+                                message: error.message
+                            }
+                        }))
+                        return;
+                    }
                     IssueManager.getInstance().changeSection(boardId, issueId, updatedSection)
                     UserManager.getInstance().broadcast(
                         boardId,
@@ -190,115 +250,213 @@ export class User {
                                 updatedSection
                             }
                         }));
-                    }
                     break;
+                }
 
-                case 'add-section':
-                    const newSection = parsedData.payload.section;
-                    const boardIdForSection = parsedData.payload.boardId;
-                    const createdSection = await prisma.section.create({
-                        data: {
-                            title: newSection,
-                            boardId: boardIdForSection
-                        }
-                    })
+                case 'add-section': {
+                    const isValid = CreateSectionSchema.safeParse(parsedData.payload);
+                    if (!isValid.success) {
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                payload: {
+                                    message: "Invalid payload for add-section"
+                                }
+                            })
+                        )
+                        return;
+                    }
+                    let createdSection;
+                    try {
+                        createdSection = await prisma.section.create({
+                            data: {
+                                title: parsedData.payload.title,
+                                boardId: parsedData.payload.boardId,
+                                createdBy: this.id
+                            }
+                        })
+                    } catch (error: any) {
+                        console.error("error while creating section", error)
+                        this.ws.send(JSON.stringify({
+                            type: "error",
+                            payload: {
+                                message: error.message
+                            }
+                        }))
+                        return;
+                    }
                     UserManager.getInstance().broadcast(
-                        boardIdForSection,
+                        parsedData.payload.boardId,
                         this,
                         JSON.stringify({
                             type: "create-section",
                             payload: {
                                 section: createdSection,
-                                boardId: boardIdForSection
+                                boardId: parsedData.payload.boardId
                             }
                         }));
                     break;
+                }
 
-                case 'delete-section':
-                    const sectionId = parsedData.payload.sectionId;
-                    const boardIdForDeleteSection = parsedData.payload.boardId;
-                    await prisma.section.delete({
-                        where: {
-                            id: sectionId
-                        }
-                    })
+                case 'delete-section': {
+                    const isValid = DeleteSectionSchema.safeParse(parsedData.payload);
+                    if (!isValid.success) {
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                payload: {
+                                    message: "Invalid payload for delete-section"
+                                }
+                            })
+                        )
+                        return;
+                    }
+                    try {
+                        await prisma.section.delete({
+                            where: {
+                                id: parsedData.payload.sectionId
+                            }
+                        })
+                    } catch (error: any) {
+                        console.error("error while deleting section", error)
+                        this.ws.send(JSON.stringify({
+                            type: "error",
+                            payload: {
+                                message: error.message
+                            }
+                        }))
+                        return;
+                    }
                     UserManager.getInstance().broadcast(
-                        boardIdForDeleteSection,
+                        parsedData.payload.boardId,
                         this,
                         JSON.stringify({
                             type: "delete-section",
                             payload: {
-                                sectionId: sectionId,
-                                boardId: boardIdForDeleteSection
+                                sectionId: parsedData.payload.sectionId,
+                                boardId: parsedData.payload.boardId
                             }
                         }));
                     break;
+                }
 
-                case 'move-task':
-                    const issueIdToMove = parsedData.payload.issueId;
-                    const updatedSectionForMove = parsedData.payload.updatedSection;
-                    const boardIdForMove = parsedData.payload.boardId;
-                    await prisma.issue.update({
-                        where: {
-                            id: issueIdToMove
-                        },
-                        data: {
-                            sectionId: updatedSectionForMove
-                        }
-                    })
-                    IssueManager.getInstance().changeSection(boardIdForMove, issueIdToMove, updatedSectionForMove)
+                case 'move-task': {
+                    const isValid = MoveTaskSchema.safeParse(parsedData.payload);
+                    if (!isValid.success) {
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                payload: {
+                                    message: "Invalid payload for move-task"
+                                }
+                            })
+                        )
+                        return;
+                    }
+                    try {
+                        await prisma.issue.update({
+                            where: {
+                                id: parsedData.payload.issueId
+                            },
+                            data: {
+                                sectionId: parsedData.payload.updatedSection
+                            }
+                        })
+                    } catch (error: any) {
+                        console.error("error while moving issue", error)
+                        this.ws.send(JSON.stringify({
+                            type: "error",
+                            payload: {
+                                message: error.message
+                            }
+                        }))
+                        return;
+                    }
+                    IssueManager.getInstance().changeSection(parsedData.payload.boardId, parsedData.payload.issueId, parsedData.payload.updatedSection)
                     UserManager.getInstance().broadcast(
-                        boardIdForMove,
+                        parsedData.payload.boardId,
                         this,
                         JSON.stringify({
                             type: "update-issue",
                             payload: {
-                                issueId: issueIdToMove,
-                                updatedSection: updatedSectionForMove
+                                issueId: parsedData.payload.issueId,
+                                updatedSection: parsedData.payload.updatedSection
                             }
                         }));
                     break;
+                }
 
-                case 'delete-task':
-                    const issueIdToDelete = parsedData.payload.issueId;
-                    const boardIdForDelete = parsedData.payload.boardId;
-                    await prisma.issue.delete({
-                        where: {
-                            id: issueIdToDelete
-                        }
-                    })
-                    IssueManager.getInstance().deleteTask(boardIdForDelete, issueIdToDelete)
+                case 'delete-task': {
+                    const isValid = DeleteTaskSchema.safeParse(parsedData.payload);
+                    if (!isValid.success) {
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                payload: {
+                                    message: "Invalid payload for delete-task"
+                                }
+                            })
+                        )
+                        return;
+                    }
+                    console.log("message", parsedData.payload)
+                    try {
+                        await prisma.issue.delete({
+                            where: {
+                                id: parsedData.payload.issueId
+                            }
+                        })
+                    } catch (error: any) {
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                message: error.message
+                            })
+                        )
+                    }
+                    IssueManager.getInstance().deleteTask(parsedData.payload.boardId, parsedData.payload.issueId)
                     UserManager.getInstance().broadcast(
-                        boardIdForDelete,
+                        parsedData.payload.boardId,
                         this,
                         JSON.stringify({
                             type: "delete-issue",
                             payload: {
-                                issueId: issueIdToDelete
+                                issueId: parsedData.payload.issueId
                             }
                         }));
-                    break;    
+                    break;
+                }
 
-                case 'create-board':{
-                    const newBoard = parsedData.payload.board;
-                    const organizationId = parsedData.payload.organizationId;
+                case 'create-board': {
+                    const isValid = CreateSectionSchema.safeParse(parsedData.payload);
+                    if (!isValid.success) {
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "error",
+                                payload: {
+                                    message: "Invalid payload for create-board"
+                                }
+                            })
+                        )
+                        return;
+                    }
                     const createdBoard = await prisma.board.create({
                         data: {
-                            title: newBoard,
-                            organisationId: organizationId
+                            title: parsedData.payload.title,
+                            organisationId: parsedData.payload.organizationId
                         }
                     })
                     UserManager.getInstance().broadcast(
-                        organizationId,
+                        parsedData.payload.organizationId,
                         this,
                         JSON.stringify({
                             type: "create-board",
                             payload: {
                                 board: createdBoard,
-                                organizationId: organizationId
+                                organizationId: parsedData.payload.organizationId
                             }
                         }));
-                        break;
+                    break;
                 }
 
                 default:

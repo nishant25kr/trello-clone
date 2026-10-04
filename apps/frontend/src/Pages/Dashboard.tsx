@@ -7,6 +7,8 @@ export const Dashboard = () => {
     const navigate = useNavigate();
     const [organizations, setOrganizations] = useState<Organization[] | null>(null);
     const [user, setUser] = useState<User | null>(null)
+    const [name, setName] = useState<string>("")
+    const [description, setDescription] = useState<string>("")
 
     useEffect(() => {
         (
@@ -47,7 +49,7 @@ export const Dashboard = () => {
         )()
     }, [])
 
-    const createOrganization = () => {
+    const createOrganization = async () => {
         try {
             const token = localStorage.getItem("token");
             if (!token) {
@@ -63,27 +65,29 @@ export const Dashboard = () => {
             }
             const user = JSON.parse(userData);
             const userId = user.id;
-            axios.post(`http://localhost:3000/api/v1/organization`, { userId }, {
+            const response = await axios.post(`http://localhost:3000/api/v1/organization`, { 
+                name: name,
+                description: description
+            },{
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
-            }).then(response => {
-                if (response.status !== 201) {
-                    console.log("Error creating organization");
-                    return;
-                }
-                const data = response.data;
-                console.log(data)
-            }).catch(error => {
-                console.log(error);
-            })
+            });
+            if (response.status !== 200) {
+                console.log("Error creating organization");
+                return;
+            }
+            const data = response.data;
+            console.log(data)
+            setOrganizations(prevOrgs => prevOrgs ? [...prevOrgs, data.data] : [data.data]);
+
         } catch (error) {
             console.log(error);
         }
     }
 
-    function handleJoin(id: string){
-        if(!id) return;
+    function handleJoin(id: string) {
+        if (!id) return;
         navigate(`/boards/${id}`)
     }
 
@@ -97,18 +101,18 @@ export const Dashboard = () => {
 
             <div className="border w-2/3  m-2 p-2 ">
                 <div className="border flex">
-                {organizations?.map(org => (
-                    <div className="border m-2 p-2 bg-gray-200">
-                        <p>{org.name}</p>
-                        <p>{org.description}</p>
-                        <button className="border" onClick={()=>handleJoin(org.id)}>join </button>
-                    </div>
-                ))}
+                    {organizations?.map(org => (
+                        <div className="border m-2 p-2 bg-gray-200">
+                            <p>{org.name}</p>
+                            <p>{org.description}</p>
+                            <button className="border" onClick={() => handleJoin(org.id)}>join </button>
+                        </div>
+                    ))}
                 </div>
                 <div>
-                <input type="text" className="border" />Title
-                <input type="text" className="border"/>Description
-                <button onClick={createOrganization} className="border m-2 p-2">Create Organization</button>
+                    <input type="text" className="border" onChange={(e) => setName(e.target.value)} placeholder="Title" />
+                    <input type="text" className="border" onChange={(e) => setDescription(e.target.value)} placeholder="Description" />
+                    <button onClick={createOrganization} className="border m-2 p-2">Create Organization</button>
                 </div>
             </div>
 

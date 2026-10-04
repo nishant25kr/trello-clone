@@ -6,7 +6,7 @@ import { ConnectRepository } from "./ConnectRepository";
 import { AgentRunButton } from "./AgentRunButton";
 
 export const Issue = () => {
-const params = useParams();
+  const params = useParams();
   const navigate = useNavigate();
   const wsRef = useRef<WebSocket | null>(null);
   const [user, setUser] = useState<User>()
@@ -21,7 +21,7 @@ const params = useParams();
   const [newtask, setNewtask] = useState<string>('')
   const [description, setDescription] = useState<string>();
   const [organizationId, setOrganizationId] = useState<string>(params.organizationId || '')
-  const [repository,setRepository] = useState<any | null>(null);
+  const [repository, setRepository] = useState<any | null>(null);
 
   function addtask(sectionId: string) {
     if (!newtask.trim() || !wsRef.current || !description?.trim()) {
@@ -99,7 +99,7 @@ const params = useParams();
       JSON.stringify({
         type: "add-section",
         payload: {
-          section: title.trim(),
+          title: title.trim(),
           boardId: boardId
         }
       })
@@ -129,8 +129,7 @@ const params = useParams();
         payload: {
           currentBoardId: boardId,
           newBoardId: id,
-          user: user,
-          token: params.token
+          user: user
         }
       })
     )
@@ -142,13 +141,33 @@ const params = useParams();
     changeBoard(board.id);
   }
 
+  function deleteIssue(id: string) {
+    if (!id) return;
+    try {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "delete-task",
+            payload: {
+              issueId: id,
+              boardId: boardId
+            }
+          })
+        )
+      }
+      setTask(issue => issue.find(i => i.id ===id ) ? (issue.filter(i => i.id !== id)) : (issue))
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
   useEffect(() => {
     if (!boardId && boards[0]) setBoardId(boards[0].id)
   }, [boards, boardId])
 
   useEffect(() => {
     setChangingBoard(true)
-    if(!localStorage.getItem("token") || !params.organizationId) {
+    if (!localStorage.getItem("token") || !params.organizationId) {
       navigate("/auth/login");
       return;
     }
@@ -159,7 +178,6 @@ const params = useParams();
       ws.send(JSON.stringify({
         type: 'join',
         payload: {
-          boardId: boardId,
           token: localStorage.getItem("token"),
           organizationId: params.organizationId
         }
@@ -236,6 +254,9 @@ const params = useParams();
           setUsers(prev => prev.filter((user: any) => user.id !== userIdToRemove));
           break;
 
+        case "error":
+          console.error("WebSocket error:", msg.payload);
+          break;
         default:
           console.log(msg)
           break;
@@ -254,7 +275,7 @@ const params = useParams();
       <div>
         {user?.username}
         {user?.id}
-        <CreateBoard onBoardCreated={handleBoardCreated}/>
+        <CreateBoard onBoardCreated={handleBoardCreated} />
 
         <select
           name="board"
@@ -262,13 +283,13 @@ const params = useParams();
           onChange={(e) => changeBoard(e.target.value)}
           value={boardId}
         >
-          {boards.map((item) => ( 
+          {boards.map((item) => (
             <option key={item.id} value={item.id}>{item.title}</option>
           ))}
 
         </select>
 
-        {boardId &&<ConnectRepository boardId={boardId} repo={repository}/>}
+        {boardId && <ConnectRepository boardId={boardId} repo={repository} />}
 
         <div className="border-2 m-2">
           {changingBoard == true ?
@@ -303,34 +324,40 @@ const params = useParams();
                             );
 
                             return (
-                              <div
-                                key={issue.id}
-                                className="flex w-full items-stretch overflow-hidden rounded border bg-white shadow-sm"
-                              >
-                                <button
-                                  type="button"
-                                  className="px-3 text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
-                                  onClick={() => moveBackward(issue.id)}
-                                  disabled={sectionIndex <= 0}
-                                  aria-label={`Move ${issue.title} to the previous section`}
-                                  title="Move to previous section"
-                                >
-                                  ←
-                                </button>
-                                <div className="min-w-0 flex-1 p-3">
-                                  <p className="wrap-break-word">{issue.title}</p>
-                                  <AgentRunButton issueId={issue.id} />
+                              <div className=" overflow-hidden rounded border bg-white shadow-sm">
+                                <div className="flex justify-end ">
+                                  <button onClick={() => deleteIssue(issue.id)} className="border rounded-sm m-2 px-2">X</button>
                                 </div>
-                                <button
-                                  type="button"
-                                  className="px-3 text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
-                                  onClick={() => moveForward(issue.id)}
-                                  disabled={sectionIndex >= sections.length - 1}
-                                  aria-label={`Move ${issue.title} to the next section`}
-                                  title="Move to next section"
+
+                                <div
+                                  key={issue.id}
+                                  className="flex w-full items-stretch"
                                 >
-                                  →
-                                </button>
+                                  <button
+                                    type="button"
+                                    className="px-3 text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                                    onClick={() => moveBackward(issue.id)}
+                                    disabled={sectionIndex <= 0}
+                                    aria-label={`Move ${issue.title} to the previous section`}
+                                    title="Move to previous section"
+                                  >
+                                    ←
+                                  </button>
+                                  <div className="min-w-0 flex-1 p-3">
+                                    <p className="wrap-break-word">{issue.title}</p>
+                                    <AgentRunButton issueId={issue.id} />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="px-3 text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                                    onClick={() => moveForward(issue.id)}
+                                    disabled={sectionIndex >= sections.length - 1}
+                                    aria-label={`Move ${issue.title} to the next section`}
+                                    title="Move to next section"
+                                  >
+                                    →
+                                  </button>
+                                </div>
                               </div>
                             );
                           })}
@@ -362,6 +389,7 @@ const params = useParams();
                         </button>
                       </div>
                     </div>
+
                   ))}
 
                   <div className="w-72 shrink-0">
