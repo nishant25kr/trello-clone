@@ -16,7 +16,8 @@ const createIssue = async (req:Request, res: Response) => {
                 title: parsedData.data.title,
                 description: parsedData.data.description,
                 boardId: parsedData.data.boardId,
-                sectionId: parsedData.data.sectionId
+                sectionId: parsedData.data.sectionId,
+                createdBy: parsedData.data.createdBy
             }
         })
         if(!issue) return res.status(400).json({message: "error creating issue"})

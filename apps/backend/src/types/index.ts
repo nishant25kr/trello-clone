@@ -28,7 +28,8 @@ const createIssueSchema = z.object({
     title: z.string(),
     description: z.string(),
     boardId: z.string(),
-    sectionId: z.string()
+    sectionId: z.string(),
+    createdBy: z.string()
 })
 
 const createSectionSchema = z.object({

@@ -63,7 +63,7 @@ const getRepositoryBranches = async (req: Request, res: Response) => {
 
 const connectRepository = async (req: Request, res: Response) => {
     const parsedData = connectRepositorySchema.safeParse(req.body);
-    const boardId = String(req.params.boardId ?? "");
+    const boardId = String(req.params.boardId);
 
     if (!boardId || !parsedData.success) {
         return res.status(400).json({ message: "Board and repository details are required" });
@@ -78,7 +78,7 @@ const connectRepository = async (req: Request, res: Response) => {
         const userRole = await prisma.membership.findFirst({
             where: {
                 userId: authReq.user?.userId,
-                boardId: boardId
+                organisationId: (await prisma.board.findUnique({ where: { id: boardId } }))?.organisationId
             }
         })
         if(!userRole || userRole.role !== "ADMIN") {
@@ -103,7 +103,6 @@ const connectRepository = async (req: Request, res: Response) => {
 const createBoard = async (req: Request, res: Response) => {
 
     const parsedData = createBoardSchema.safeParse(req.body);
-    const boardId = String(req.params.boardId ?? "");
 
     if (!parsedData.success) return res.status(400).json({ message: "Validation failed" });
 

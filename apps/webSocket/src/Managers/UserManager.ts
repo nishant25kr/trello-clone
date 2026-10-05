@@ -11,7 +11,6 @@ export class UserManager {
 
     static getInstance() {
         if (!this.instance) {
-            console.log("creating meetingroommanager")
             this.instance = new UserManager()
         }
         return this.instance
@@ -30,7 +29,6 @@ export class UserManager {
         if (this.users.has(boardId)) {
             if (this.users.get(boardId)?.find(u => u.id === user.id)) return;
             const users = this.users.get(boardId)
-            console.log("users:",users)
             this.users.set(boardId, [...users ?? [], user])
             const message = JSON.stringify({
                 type: "user-joined",
@@ -40,12 +38,9 @@ export class UserManager {
                 }
             })
             this.broadcast(boardId, user, message)
-            console.log(this.users.get(boardId)?.length, "users in boardId", boardId)
             return;
         }
         this.users.set(boardId, [user])
-        console.log(this.users.get(boardId)?.length, "users in boardId", boardId)
-
     }
 
     public RemoveUser(boardId: string, user: User) {

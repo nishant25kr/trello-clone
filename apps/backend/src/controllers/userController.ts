@@ -25,7 +25,6 @@ const getUser = async (req: Request, res: Response) => {
 
 const createUser = async (req: Request, res: Response) => {
     const { username, password } = req.body;
-    console.log("Received request to create user:", { username, password });
     if (!username || !password) {
         return res.status(400).json({ error: "Username and password are required" });
     }
@@ -59,7 +58,6 @@ const createUser = async (req: Request, res: Response) => {
 
 const signIn = async (req:Request, res:Response) => {
     const parsedData = signInSchema.safeParse(req.body);
-    console.log(parsedData)
     if(!parsedData.success){
         return res.status(400).json({ message:"Validation failed "});
     }
@@ -67,11 +65,6 @@ const signIn = async (req:Request, res:Response) => {
         const user = await prisma.user.findUnique({
             where:{
                 username: parsedData.data.username
-            },
-            select:{
-                id:true,
-                username:true,
-                password:true
             }
         })
         if(!user) return res.status(400).json({ message:"invalid username" })
@@ -79,7 +72,6 @@ const signIn = async (req:Request, res:Response) => {
         if(!isMatch){
             return res.status(400).json({message:"Wrong password"})
         }
-        console.log('jwt',jwtSecret)
         const token = jwt.sign({
             userId : user.id,
             username: user.username,

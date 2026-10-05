@@ -16,13 +16,13 @@ route.post("/section", Middleware, createSection)
 route.post("/board", Middleware, createBoard)
 route.get("/github/repository", Middleware, getRepositoryBranches)
 route.post("/board/:boardId/repository", Middleware, connectRepository)
-route.post("/issue/:issueId/agent-jobs", startAgentJob)
-route.get("/agent-jobs/:jobId", getAgentJob)
+route.post("/issue/:issueId/agent-jobs", Middleware, startAgentJob)
+route.get("/agent-jobs/:jobId", Middleware, getAgentJob)
 route.post("/signin",signIn)
-route.get("/section", getSection)
-route.get("/users/:id", getUser);
+route.get("/section", Middleware, getSection)
+route.get("/users/:id", Middleware, getUser);
 route.get("/organization/:id", Middleware, getOrg);
-route.get("/issue/:id",getIssue)
-route.put("/issue",updateIssue)
+route.get("/issue/:id", Middleware, getIssue)
+route.put("/issue", Middleware, updateIssue)
 
 export default route;
