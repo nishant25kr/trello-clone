@@ -2,6 +2,7 @@ import type { Board } from "@/types"
 import axios from "axios"
 import { useState } from "react"
 import { useParams } from "react-router-dom"
+import { API_BASE_URL } from "../config"
 
 type CreateBoardProps = {
     onBoardCreated: (board: Board) => void;
@@ -24,7 +25,7 @@ export const CreateBoard = ({ onBoardCreated }: CreateBoardProps) => {
                 return;
             }
             setCreating(true);
-            const response = await axios.post("http://localhost:3000/api/v1/board", {
+            const response = await axios.post(`${API_BASE_URL}/board`, {
                 title: title,
                 organizationId: params.organizationId
             }, {

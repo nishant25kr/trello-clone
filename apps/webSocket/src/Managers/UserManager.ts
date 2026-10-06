@@ -17,46 +17,75 @@ export class UserManager {
     }
 
     public getUsers(boardId: string): { id: string, username: string }[] {
-        const res: any[] = [];
+        const res: { id: string, username: string }[] = [];
         if (!this.users.has(boardId)) return res;
+
         this.users.get(boardId)?.forEach((u) => {
+            if (!u.id || !u.username) return;
             res.push({ id: u.id, username: u.username });
-        })
-        return res
+        });
+
+        return res;
     }
 
     public addUser(boardId: string, user: User) {
-        if (this.users.has(boardId)) {
-            if (this.users.get(boardId)?.find(u => u.id === user.id)) return;
-            const users = this.users.get(boardId)
-            this.users.set(boardId, [...users ?? [], user])
-            const message = JSON.stringify({
-                type: "user-joined",
-                payload: {
-                    id: user.id,
-                    username: user.username
-                }
-            })
-            this.broadcast(boardId, user, message)
-            return;
-        }
-        this.users.set(boardId, [user])
+        const boardUsers = this.users.get(boardId) ?? [];
+        if (boardUsers.some((u) => u.id === user.id)) return;
+
+        const updatedUsers = [...boardUsers, user];
+        this.users.set(boardId, updatedUsers);
+
+        const message = JSON.stringify({
+            type: "user-joined",
+            payload: {
+                id: user.id,
+                username: user.username,
+            },
+        });
+
+        updatedUsers.forEach((member) => {
+            if (member.id !== user.id) {
+                member.ws.send(message);
+            }
+        });
     }
 
     public RemoveUser(boardId: string, user: User) {
-        const filteredUser = this.users.get(boardId)?.filter(item => item.id !== user.id)
-        if (filteredUser) {
-            this.users.set(boardId, filteredUser)
+        const boardUsers = this.users.get(boardId) ?? [];
+        const filteredUsers = boardUsers.filter((item) => item.id !== user.id);
+
+        if (filteredUsers.length === boardUsers.length) {
+            return;
         }
+
+        if (filteredUsers.length === 0) {
+            this.users.delete(boardId);
+        } else {
+            this.users.set(boardId, filteredUsers);
+        }
+
+        const message = JSON.stringify({
+            type: "user-left",
+            payload: {
+                id: user.id,
+                username: user.username,
+            },
+        });
+
+        filteredUsers.forEach((member) => {
+            member.ws.send(message);
+        });
     }
 
     public broadcast(boardId: string, sender: User, message: any) {
-        if (!this.users.get(boardId)?.find(u => u.id === sender.id)) return;
-        this.users.get(boardId)?.forEach(i => {
-            if (i.id !== sender.id) {
-                i.ws.send(message)
+        const boardUsers = this.users.get(boardId) ?? [];
+        if (!boardUsers.some((u) => u.id === sender.id)) return;
+
+        boardUsers.forEach((member) => {
+            if (member.id !== sender.id) {
+                member.ws.send(message);
             }
-        })
+        });
     }
 
     public handleIssueChange(id: string) {
@@ -64,19 +93,27 @@ export class UserManager {
     }
 
     public RemoveUserFromAllBoards(user: User) {
-        this.users.forEach((users, boardId) => {
-            const filteredUser = users.filter(item => item.id !== user.id)
-            if (filteredUser.length !== users.length) {
-                this.users.set(boardId, filteredUser)
-                const message = JSON.stringify({
-                    type: "user-left",
-                    payload: {
-                        id: user.id,
-                        username: user.username
-                    }
-                })
-                this.broadcast(boardId, user, message)
+        for (const [boardId, boardUsers] of this.users.entries()) {
+            const filteredUsers = boardUsers.filter((item) => item.id !== user.id);
+            if (filteredUsers.length === boardUsers.length) continue;
+
+            if (filteredUsers.length === 0) {
+                this.users.delete(boardId);
+            } else {
+                this.users.set(boardId, filteredUsers);
             }
-        })
+
+            const message = JSON.stringify({
+                type: "user-left",
+                payload: {
+                    id: user.id,
+                    username: user.username,
+                },
+            });
+
+            filteredUsers.forEach((member) => {
+                member.ws.send(message);
+            });
+        }
     }
 }

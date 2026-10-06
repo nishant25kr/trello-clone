@@ -1,39 +1,121 @@
 import axios from "axios";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../config";
 
 export const Login = () => {
     const navigate = useNavigate();
-    const [password, setPassword] = useState<string>('')
-    const [username, setUsername] = useState<string>('')
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
-    async function handleSubmit(){
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError("");
+
+        if (!username.trim() || !password.trim()) {
+            setError("Enter your username and password.");
+            return;
+        }
+
+        setLoading(true);
+
         try {
-            console.log(username,"---",password)
-            if(!password.trim() || !username.trim()){
-                alert("error")
-                return;
-            }
-            const response = await axios.post("http://localhost:3000/api/v1/signin",{
-                    username: username,
-                    password: password
-            })
-            if(response.status === 200){
-                localStorage.setItem("token",response.data.token)
-                localStorage.setItem("user",JSON.stringify(response.data.user))
-                navigate(`/dashboard/${response.data.user.username}`)                
-            }
-        } catch (error: any) {
-            console.error("error",error.message)
+            const response = await axios.post(`${API_BASE_URL}/signin`, {
+                username,
+                password,
+            });
+
+            localStorage.setItem("token", response.data.token);
+            localStorage.setItem("user", JSON.stringify(response.data.user));
+            navigate(`/dashboard/${response.data.user.username}`);
+        } catch (requestError) {
+            setError(
+                axios.isAxiosError(requestError)
+                    ? requestError.response?.data?.message ?? "Unable to sign in."
+                    : "Unable to sign in."
+            );
+        } finally {
+            setLoading(false);
         }
     }
+
     return (
-        <div className="flex flex-col items-center justify-center h-screen">
-            <h1>Login</h1>
-            <input type="text" className="border" onChange={(e)=> setUsername(e.target.value)}  />username
-            <input type="text" className="border" onChange={(e)=> setPassword(e.target.value)} />password <br />
-            <button onClick={()=> handleSubmit()}>Login</button> <br />
-            <button onClick={() => navigate("/auth/register")}>Create Account</button>
-        </div>
-    )
-}
+        <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-900">
+            <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <aside className="hidden w-1/2 flex-col justify-between bg-slate-900 p-10 text-white md:flex">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-sm font-bold text-slate-900">T</span>
+                            <span className="text-lg font-semibold">Trello Clone</span>
+                        </div>
+                        <h1 className="mt-16 text-3xl font-semibold leading-tight">Build better work flows, together.</h1>
+                        <p className="mt-4 max-w-sm text-sm leading-6 text-slate-300">Organize boards, connect repositories, and move work forward from one calm workspace.</p>
+                    </div>
+                    <p className="text-xs text-slate-500">Your work. Your board. Your workflow.</p>
+                </aside>
+
+                <section className="flex w-full items-center justify-center p-6 sm:p-10">
+                    <div className="w-full max-w-sm">
+                        <div className="md:hidden">
+                            <div className="mb-8 flex items-center gap-2">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">T</span>
+                                <span className="text-lg font-semibold">Trello Clone</span>
+                            </div>
+                        </div>
+
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Welcome back</p>
+                        <h2 className="mt-2 text-2xl font-semibold">Log in</h2>
+                        <p className="mt-2 text-sm text-slate-500">Enter your details to continue to your workspace.</p>
+
+                        <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
+                            <div>
+                                <label htmlFor="login-username" className="mb-1.5 block text-sm font-medium text-slate-700">Username</label>
+                                <input
+                                    id="login-username"
+                                    type="text"
+                                    autoComplete="username"
+                                    value={username}
+                                    onChange={(event) => setUsername(event.target.value)}
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+                                    placeholder="Your username"
+                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-slate-700">Password</label>
+                                <input
+                                    id="login-password"
+                                    type="password"
+                                    autoComplete="current-password"
+                                    value={password}
+                                    onChange={(event) => setPassword(event.target.value)}
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+                                    placeholder="Your password"
+                                />
+                            </div>
+
+                            {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {loading ? "Signing in…" : "Log in"}
+                            </button>
+                        </form>
+
+                        <p className="mt-6 text-center text-sm text-slate-500">
+                            New to Trello Clone?{" "}
+                            <button type="button" onClick={() => navigate("/auth/register")} className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-900">
+                                Create an account
+                            </button>
+                        </p>
+                    </div>
+                </section>
+            </div>
+        </main>
+    );
+};

@@ -19,9 +19,11 @@ export class User {
     public id!: string;
     public username!: string;
     public ws: WebSocket;
+    public joinedBoards: Set<string>;
 
     constructor(ws: WebSocket) {
         this.ws = ws;
+        this.joinedBoards = new Set();
         this.initHandler();
     }
 
@@ -107,6 +109,7 @@ export class User {
 
                         const token = parsedData.payload.token;
                         const organizationId = parsedData.payload.organizationId;
+                        const requestedBoardId = parsedData.payload.boardId;
 
                         let user;
                         try {
@@ -137,13 +140,19 @@ export class User {
                             return;
                         }
 
-                        const firstBoard = boards[0];
-                        if (!firstBoard) {
+                        const validBoardIds = new Set(boards.map((board) => board.id));
+                        const boardId = requestedBoardId && validBoardIds.has(requestedBoardId)
+                            ? requestedBoardId
+                            : boards[0]?.id;
+
+                        if (!boardId) {
                             this.sendError("No boards found for this organization");
                             return;
                         }
 
-                        const boardId = firstBoard.id;
+                        this.joinedBoards.clear();
+                        this.joinedBoards.add(boardId);
+
                         const repo = await prisma.repository.findFirst({
                             where: { boardId },
                         });
@@ -197,8 +206,13 @@ export class User {
                         const { newBoardId, currentBoardId } = parsedData.payload;
                         await this.ensureBoardMembership(this.id, newBoardId);
 
-                        UserManager.getInstance().RemoveUser(currentBoardId, this);
+                        if (currentBoardId && currentBoardId !== newBoardId) {
+                            UserManager.getInstance().RemoveUser(currentBoardId, this);
+                            this.joinedBoards.delete(currentBoardId);
+                        }
+
                         UserManager.getInstance().addUser(newBoardId, this);
+                        this.joinedBoards.add(newBoardId);
 
                         const sectionsForBoard = await prisma.section.findMany({
                             where: { boardId: newBoardId },
@@ -221,6 +235,8 @@ export class User {
                                     sections: sectionsForBoard,
                                     issues: issuesForBoard,
                                     repository: repo ?? null,
+                                    boardId: newBoardId,
+                                    users: UserManager.getInstance().getUsers(newBoardId),
                                 },
                             })
                         );
@@ -228,6 +244,7 @@ export class User {
                     }
 
                     case "create-task": {
+                        console.log("create-task", parsedData.payload);
                         const isValid = CreateTaskSchema.safeParse(parsedData.payload);
                         if (!isValid.success) {
                             this.sendError("Invalid payload for create-task");
@@ -266,6 +283,16 @@ export class User {
                                 },
                             })
                         );
+                        this.ws.send(
+                            JSON.stringify({
+                                type: "create-task-success",
+                                payload: {
+                                    temporaryId: parsedData.payload.temporaryId,
+                                    permanentId: newIssue.id,
+
+                                }
+                            })
+                        )
                         break;
                     }
 
@@ -503,11 +530,15 @@ export class User {
         });
 
         this.ws.on("close", () => {
-            UserManager.getInstance().RemoveUserFromAllBoards(this);
+            for (const boardId of this.joinedBoards) {
+                UserManager.getInstance().RemoveUser(boardId, this);
+            }
+            this.joinedBoards.clear();
         });
     }
 
     destroy() {
         // intentionally left empty as a lifecycle hook
     }
+
 }

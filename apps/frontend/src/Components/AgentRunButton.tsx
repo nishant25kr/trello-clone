@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../config";
 
 type AgentJob = {
     id: string;
@@ -14,8 +15,6 @@ type AgentRunButtonProps = {
     issueId: string;
 };
 
-const apiBase = "http://localhost:3000/api/v1";
-
 export const AgentRunButton = ({ issueId }: AgentRunButtonProps) => {
     const [job, setJob] = useState<AgentJob>();
     const [starting, setStarting] = useState(false);
@@ -26,7 +25,7 @@ export const AgentRunButton = ({ issueId }: AgentRunButtonProps) => {
 
         const interval = window.setInterval(async () => {
             try {
-                const response = await axios.get(`${apiBase}/agent-jobs/${job.id}`);
+                const response = await axios.get(`${API_BASE_URL}/agent-jobs/${job.id}`);
                 setJob(response.data.job);
             } catch {
                 setError("Unable to refresh agent status");
@@ -40,7 +39,7 @@ export const AgentRunButton = ({ issueId }: AgentRunButtonProps) => {
         setStarting(true);
         setError("");
         try {
-            const response = await axios.post(`${apiBase}/issue/${issueId}/agent-jobs`);
+            const response = await axios.post(`${API_BASE_URL}/issue/${issueId}/agent-jobs`);
             setJob(response.data.job);
         } catch (requestError) {
             setError(axios.isAxiosError(requestError)
