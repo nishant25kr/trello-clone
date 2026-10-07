@@ -28,6 +28,8 @@ model Membership {
   id             String       @id @unique @default(uuid())
   userId         String
   organisationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   role           RoleEnum
   organisation   Organization @relation(fields: [organisationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
@@ -50,6 +52,8 @@ model Issue {
   boardId     String
   sectionId   String
   createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   board       Board   @relation(fields: [boardId], references: [id])
   section     Section @relation(fields: [sectionId], references: [id])
   agentJobs   AgentJob[]
@@ -61,6 +65,8 @@ model Section {
   title     String
   boardId   String
   createdBy String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   issues    Issue[]
   board     Board   @relation(fields: [boardId], references: [id])
   creater   User    @relation("UserSections", fields: [createdBy], references: [id])
