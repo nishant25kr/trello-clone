@@ -257,18 +257,23 @@ export class User {
                         }
 
                         const { title, description, boardId, sectionId } = parsedData.payload;
-                        await this.ensureBoardMembership(this.id, boardId);
-                        await this.ensureSectionInBoard(sectionId, boardId);
 
-                        const newIssue = await prisma.issue.create({
-                            data: {
-                                title,
-                                description,
-                                boardId,
-                                sectionId,
-                                createdBy: this.id,
-                            },
-                        });
+                        let newIssue;
+                        try {
+                            newIssue = await prisma.issue.create({
+                                data: {
+                                    title,
+                                    description,
+                                    boardId,
+                                    sectionId,
+                                    createdBy: this.id,
+                                },
+                            });
+
+                        } catch (error: any) {
+                            this.sendError(error.message)
+                            return;
+                        }
 
                         IssueManager.getInstance().addTask(boardId, newIssue);
                         UserManager.getInstance().broadcast(

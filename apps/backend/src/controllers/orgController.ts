@@ -8,7 +8,6 @@ const getOrg = async (req: Request, res: Response) => {
         return res.status(401).json({ message: "Unauthorized" });
     }
     const userID = authReq.user.userId;
-    console.log(userID)
     if (!userID || Array.isArray(userID)) {
         return res.status(400).json({ error: "Organization ID is required" });
     }
@@ -38,12 +37,10 @@ const createOrg = async (req: Request, res: Response) => {
     if (!parsedData.success) {
         return res.status(404).json({ message: "Validation failed" })
     }
-    console.log(parsedData)
     const authReq = req as unknown as AuthenticatedRequest;
     if (!authReq.user?.userId) {
         return res.status(401).json({ message: "Unauthorized" });
     }
-    console.log("user", authReq.user.userId);
 
     try {
         const org = await prisma.organization.create({
@@ -53,11 +50,17 @@ const createOrg = async (req: Request, res: Response) => {
             }
         })
 
+        if (!org) return res.status(400).json({ message: "failed to create organization" });
+
+        const userId = authReq.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
         const membership = await prisma.membership.create({
             data: {
-                userId: authReq.user.userId,
+                userId,
                 organisationId: org.id,
-                role: 'ADMIN'
+                role: 'ADMIN',
             }
         })
 

@@ -30,9 +30,7 @@ export const Dashboard = () => {
                     }
                     const user = JSON.parse(userData)
                     setUser(user)
-                    console.log(user)
-                    const userId = user.id;
-                    const response = await axios.get(`${API_BASE_URL}/organization/${userId}`, {
+                    const response = await axios.get(`${API_BASE_URL}/organization`, {
                         headers: {
                             Authorization: `Bearer ${token}`
                         }
@@ -66,7 +64,6 @@ export const Dashboard = () => {
                 return;
             }
             const user = JSON.parse(userData);
-            const userId = user.id;
             const response = await axios.post(`${API_BASE_URL}/organization`, { 
                 name: name,
                 description: description

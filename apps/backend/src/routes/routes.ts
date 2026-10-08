@@ -21,7 +21,7 @@ route.get("/agent-jobs/:jobId", Middleware, getAgentJob)
 route.post("/signin",signIn)
 route.get("/section", Middleware, getSection)
 route.get("/users/:id", Middleware, getUser);
-route.get("/organization/:id", Middleware, getOrg);
+route.get("/organization", Middleware, getOrg);
 route.get("/issue/:id", Middleware, getIssue)
 route.put("/issue", Middleware, updateIssue)
 
