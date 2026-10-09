@@ -11,6 +11,7 @@ export const Dashboard = () => {
     const [user, setUser] = useState<User | null>(null)
     const [name, setName] = useState<string>("")
     const [description, setDescription] = useState<string>("")
+    const [username, setUsername] = useState<string>("")
 
     useEffect(() => {
         (
@@ -64,10 +65,10 @@ export const Dashboard = () => {
                 return;
             }
             const user = JSON.parse(userData);
-            const response = await axios.post(`${API_BASE_URL}/organization`, { 
+            const response = await axios.post(`${API_BASE_URL}/organization`, {
                 name: name,
                 description: description
-            },{
+            }, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -88,6 +89,31 @@ export const Dashboard = () => {
     function handleJoin(id: string) {
         if (!id) return;
         navigate(`/boards/${id}`)
+    }
+
+    async function handleInvite(id: string){
+        try {
+            const token = localStorage.getItem("token");
+
+            if(!token) return;
+
+            if(!id || !username) return;
+            
+            const response = await axios.post(`${API_BASE_URL}/invite`, {
+                name: username
+            }, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+
+
+
+            
+        } catch (error) {
+            
+        }
     }
 
     return (
@@ -146,6 +172,14 @@ export const Dashboard = () => {
                                         >
                                             Open board
                                         </button>
+                                        <button
+                                            type="button"
+                                            className="rounded border border-slate-300 px-3 py-2 text-sm font-medium"
+                                            onClick={()=>handleInvite(org.id)}
+                                        >
+                                            Invite
+                                        </button>
+                                        <input className="border" placeholder="username" />username
                                     </div>
                                 ))}
                             </div>

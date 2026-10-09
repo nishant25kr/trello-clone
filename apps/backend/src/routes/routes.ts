@@ -14,6 +14,7 @@ route.post("/organization", Middleware, createOrg);
 route.post("/issue",Middleware, createIssue)
 route.post("/section", Middleware, createSection)
 route.post("/board", Middleware, createBoard)
+route.post("/invite", Middleware, invite)
 route.get("/github/repository", Middleware, getRepositoryBranches)
 route.post("/board/:boardId/repository", Middleware, connectRepository)
 route.post("/issue/:issueId/agent-jobs", Middleware, startAgentJob)

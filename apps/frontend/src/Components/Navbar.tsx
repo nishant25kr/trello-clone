@@ -30,12 +30,7 @@ export const Navbar = () => {
           >
             Search
           </button>
-          <button
-            type="button"
-            className="rounded border border-slate-300 px-3 py-2 text-sm font-medium"
-          >
-            Invite
-          </button>
+          
           <button
             type="button"
             onClick={handleLogout}

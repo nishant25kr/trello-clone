@@ -44,6 +44,12 @@ const updateIssueSchema = z.object({
     sectionId: z.string()
 })
 
+const inviteUserSchema = z.object({
+    username: z.string,
+    organizationId: z.string,
+
+})
+
 const signInSchema = z.object({
     username: z.string(),
     password: z
@@ -64,7 +70,8 @@ export {
     createSectionSchema,
     getIssueSchema,
     updateIssueSchema,
-    signInSchema
+    signInSchema,
+    inviteUserSchema
 }
 
 export type AuthenticatedRequest = Request & {
